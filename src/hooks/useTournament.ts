@@ -1,0 +1,102 @@
+import { useEffect, useMemo, useState } from 'react'
+import {
+  calculateStandings,
+  defaultMatches,
+  defaultPlayers,
+  getRoundBye,
+  getRoundMatches,
+  type Match,
+  type Player,
+} from '../domain/tournament'
+import { saveMatchScore, seedTournament, subscribeMatches, subscribePlayers } from '../services/tournamentRepository'
+
+export function useTournament(userId: string | undefined) {
+  const [players, setPlayers] = useState<Player[]>([])
+  const [matches, setMatches] = useState<Match[]>([])
+  const [selectedRound, setSelectedRound] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [savingMatchId, setSavingMatchId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const unsubscribePlayers = subscribePlayers(
+      (nextPlayers) => {
+        setPlayers(nextPlayers)
+        setLoading(false)
+      },
+      (firebaseError) => {
+        setError(firebaseError.message)
+        setLoading(false)
+      },
+    )
+
+    const unsubscribeMatches = subscribeMatches(
+      (nextMatches) => {
+        setMatches(nextMatches)
+        setLoading(false)
+      },
+      (firebaseError) => {
+        setError(firebaseError.message)
+        setLoading(false)
+      },
+    )
+
+    return () => {
+      unsubscribePlayers()
+      unsubscribeMatches()
+    }
+  }, [])
+
+  const activePlayers = players.length > 0 ? players : defaultPlayers
+  const activeMatches = matches.length > 0 ? matches : defaultMatches
+
+  const standings = useMemo(() => calculateStandings(activePlayers, activeMatches), [activePlayers, activeMatches])
+  const roundMatches = useMemo(() => getRoundMatches(activeMatches, selectedRound), [activeMatches, selectedRound])
+  const byePlayerId = useMemo(() => getRoundBye(activeMatches, selectedRound), [activeMatches, selectedRound])
+  const byePlayer = activePlayers.find((player) => player.id === byePlayerId)
+  const isSeeded = players.length > 0 && matches.length > 0
+
+  async function handleSeed() {
+    setError('')
+
+    try {
+      await seedTournament()
+    } catch (seedError) {
+      setError(seedError instanceof Error ? seedError.message : 'Nao foi possivel criar a tabela base.')
+    }
+  }
+
+  async function handleSaveScore(matchId: string, homeGoals: number, awayGoals: number) {
+    if (!userId) {
+      setError('Entre com o Google antes de salvar resultados.')
+      return
+    }
+
+    setSavingMatchId(matchId)
+    setError('')
+
+    try {
+      await saveMatchScore(matchId, homeGoals, awayGoals, userId)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o placar.')
+    } finally {
+      setSavingMatchId(null)
+    }
+  }
+
+  return {
+    players: activePlayers,
+    standings,
+    matches: activeMatches,
+    roundMatches,
+    byePlayer,
+    selectedRound,
+    setSelectedRound,
+    loading,
+    error,
+    isSeeded,
+    savingMatchId,
+    seedTournament: handleSeed,
+    saveScore: handleSaveScore,
+  }
+}

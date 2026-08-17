@@ -1,0 +1,222 @@
+export type Player = {
+  id: string
+  name: string
+  teamName: string
+  crestUrl: string
+  photoUrl: string
+}
+
+export type Match = {
+  id: string
+  round: number
+  leg: 'turno' | 'returno'
+  homePlayerId: string
+  awayPlayerId: string
+  byePlayerId: string
+  homeGoals: number | null
+  awayGoals: number | null
+  played: boolean
+}
+
+export type StandingRow = {
+  playerId: string
+  player: Player
+  played: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDifference: number
+  points: number
+}
+
+export const defaultPlayers: Player[] = [
+  {
+    id: 'capflint',
+    name: 'Capflint',
+    teamName: 'Time Capflint',
+    crestUrl: '',
+    photoUrl: '',
+  },
+  {
+    id: 'manduca',
+    name: 'Manduca',
+    teamName: 'Time Manduca',
+    crestUrl: '',
+    photoUrl: '',
+  },
+  {
+    id: 'falcon',
+    name: 'Falcon',
+    teamName: 'Time Falcon',
+    crestUrl: '',
+    photoUrl: '',
+  },
+  {
+    id: 'leo',
+    name: 'Leo',
+    teamName: 'Time Leo',
+    crestUrl: '',
+    photoUrl: '',
+  },
+  {
+    id: 'nsb',
+    name: 'NSB',
+    teamName: 'Time NSB',
+    crestUrl: '',
+    photoUrl: '',
+  },
+]
+
+const fixture = (
+  id: string,
+  round: number,
+  leg: Match['leg'],
+  homePlayerId: string,
+  awayPlayerId: string,
+  byePlayerId: string,
+): Match => ({
+  id,
+  round,
+  leg,
+  homePlayerId,
+  awayPlayerId,
+  byePlayerId,
+  homeGoals: null,
+  awayGoals: null,
+  played: false,
+})
+
+export const defaultMatches: Match[] = [
+  fixture('r1-manduca-nsb', 1, 'turno', 'manduca', 'nsb', 'capflint'),
+  fixture('r1-falcon-leo', 1, 'turno', 'falcon', 'leo', 'capflint'),
+  fixture('r2-capflint-nsb', 2, 'turno', 'capflint', 'nsb', 'leo'),
+  fixture('r2-manduca-falcon', 2, 'turno', 'manduca', 'falcon', 'leo'),
+  fixture('r3-leo-capflint', 3, 'turno', 'leo', 'capflint', 'manduca'),
+  fixture('r3-nsb-falcon', 3, 'turno', 'nsb', 'falcon', 'manduca'),
+  fixture('r4-falcon-capflint', 4, 'turno', 'falcon', 'capflint', 'nsb'),
+  fixture('r4-leo-manduca', 4, 'turno', 'leo', 'manduca', 'nsb'),
+  fixture('r5-capflint-manduca', 5, 'turno', 'capflint', 'manduca', 'falcon'),
+  fixture('r5-nsb-leo', 5, 'turno', 'nsb', 'leo', 'falcon'),
+  fixture('r6-nsb-manduca', 6, 'returno', 'nsb', 'manduca', 'capflint'),
+  fixture('r6-leo-falcon', 6, 'returno', 'leo', 'falcon', 'capflint'),
+  fixture('r7-nsb-capflint', 7, 'returno', 'nsb', 'capflint', 'leo'),
+  fixture('r7-falcon-manduca', 7, 'returno', 'falcon', 'manduca', 'leo'),
+  fixture('r8-capflint-leo', 8, 'returno', 'capflint', 'leo', 'manduca'),
+  fixture('r8-falcon-nsb', 8, 'returno', 'falcon', 'nsb', 'manduca'),
+  fixture('r9-capflint-falcon', 9, 'returno', 'capflint', 'falcon', 'nsb'),
+  fixture('r9-manduca-leo', 9, 'returno', 'manduca', 'leo', 'nsb'),
+  fixture('r10-manduca-capflint', 10, 'returno', 'manduca', 'capflint', 'falcon'),
+  fixture('r10-leo-nsb', 10, 'returno', 'leo', 'nsb', 'falcon'),
+]
+
+export function getRoundMatches(matches: Match[], round: number): Match[] {
+  return matches.filter((match) => match.round === round)
+}
+
+export function getRoundBye(matches: Match[], round: number): string | undefined {
+  return matches.find((match) => match.round === round)?.byePlayerId
+}
+
+export function calculateStandings(players: Player[], matches: Match[]): StandingRow[] {
+  const rows = new Map<string, StandingRow>()
+
+  for (const player of players) {
+    rows.set(player.id, {
+      playerId: player.id,
+      player,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDifference: 0,
+      points: 0,
+    })
+  }
+
+  for (const match of matches) {
+    if (!isCompletedMatch(match)) {
+      continue
+    }
+
+    const home = rows.get(match.homePlayerId)
+    const away = rows.get(match.awayPlayerId)
+
+    if (!home || !away) {
+      continue
+    }
+
+    applyResult(home, match.homeGoals, match.awayGoals)
+    applyResult(away, match.awayGoals, match.homeGoals)
+  }
+
+  const completedMatches = matches.filter(isCompletedMatch)
+
+  return [...rows.values()].sort((a, b) => {
+    const primary =
+      b.points - a.points ||
+      b.wins - a.wins ||
+      b.goalDifference - a.goalDifference ||
+      b.goalsFor - a.goalsFor ||
+      headToHeadPoints(b.playerId, a.playerId, completedMatches) -
+        headToHeadPoints(a.playerId, b.playerId, completedMatches)
+
+    return primary || a.player.name.localeCompare(b.player.name)
+  })
+}
+
+function isCompletedMatch(match: Match): match is Match & { homeGoals: number; awayGoals: number } {
+  return (
+    match.played &&
+    typeof match.homeGoals === 'number' &&
+    typeof match.awayGoals === 'number' &&
+    Number.isInteger(match.homeGoals) &&
+    Number.isInteger(match.awayGoals) &&
+    match.homeGoals >= 0 &&
+    match.awayGoals >= 0
+  )
+}
+
+function applyResult(row: StandingRow, goalsFor: number, goalsAgainst: number) {
+  row.played += 1
+  row.goalsFor += goalsFor
+  row.goalsAgainst += goalsAgainst
+  row.goalDifference = row.goalsFor - row.goalsAgainst
+
+  if (goalsFor > goalsAgainst) {
+    row.wins += 1
+    row.points += 3
+  } else if (goalsFor === goalsAgainst) {
+    row.draws += 1
+    row.points += 1
+  } else {
+    row.losses += 1
+  }
+}
+
+function headToHeadPoints(playerId: string, opponentId: string, matches: Array<Match & { homeGoals: number; awayGoals: number }>) {
+  return matches.reduce((points, match) => {
+    const isHome = match.homePlayerId === playerId && match.awayPlayerId === opponentId
+    const isAway = match.awayPlayerId === playerId && match.homePlayerId === opponentId
+
+    if (!isHome && !isAway) {
+      return points
+    }
+
+    const playerGoals = isHome ? match.homeGoals : match.awayGoals
+    const opponentGoals = isHome ? match.awayGoals : match.homeGoals
+
+    if (playerGoals > opponentGoals) {
+      return points + 3
+    }
+
+    if (playerGoals === opponentGoals) {
+      return points + 1
+    }
+
+    return points
+  }, 0)
+}
