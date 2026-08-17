@@ -7,6 +7,7 @@ import { RoundPanel } from './components/RoundPanel'
 import { StandingsTable } from './components/StandingsTable'
 import { useTournament } from './hooks/useTournament'
 import { auth, googleProvider } from './services/firebase'
+import { getFirebaseAuthMessage } from './services/firebaseErrors'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -26,7 +27,7 @@ export default function App() {
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Nao foi possivel entrar com Google.')
+      setAuthError(getFirebaseAuthMessage(error))
     }
   }
 
