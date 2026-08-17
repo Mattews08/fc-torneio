@@ -3,7 +3,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
-  updateDoc,
+  setDoc,
   writeBatch,
   type FirestoreError,
   type Unsubscribe,
@@ -64,13 +64,20 @@ export async function seedTournament() {
 }
 
 export async function saveMatchScore(matchId: string, homeGoals: number, awayGoals: number, userId: string) {
-  await updateDoc(doc(matchesRef, matchId), {
+  const defaultMatch = defaultMatches.find((match) => match.id === matchId)
+
+  if (!defaultMatch) {
+    throw new Error('Partida nao encontrada na tabela base.')
+  }
+
+  await setDoc(doc(matchesRef, matchId), {
+    ...defaultMatch,
     homeGoals,
     awayGoals,
     played: true,
     updatedAt: serverTimestamp(),
     updatedBy: userId,
-  })
+  }, { merge: true })
 }
 
 function getPlayerOrder(playerId: string) {

@@ -5,6 +5,8 @@ import {
   defaultPlayers,
   getRoundBye,
   getRoundMatches,
+  mergeMatchesWithDefaults,
+  mergePlayersWithDefaults,
   type Match,
 } from './tournament'
 
@@ -24,6 +26,35 @@ describe('tournament fixtures', () => {
     ])
     expect(getRoundBye(defaultMatches, 1)).toBe('capflint')
     expect(getRoundBye(defaultMatches, 10)).toBe('falcon')
+  })
+})
+
+describe('default data merging', () => {
+  it('keeps the full fixture list when Firestore only has one saved match', () => {
+    const savedMatch: Match = {
+      ...defaultMatches[1],
+      homeGoals: 2,
+      awayGoals: 0,
+      played: true,
+    }
+
+    const mergedMatches = mergeMatchesWithDefaults([savedMatch])
+
+    expect(mergedMatches).toHaveLength(20)
+    expect(mergedMatches[1]).toMatchObject({
+      id: 'r1-falcon-leo',
+      homeGoals: 2,
+      awayGoals: 0,
+      played: true,
+    })
+    expect(mergedMatches[0]).toMatchObject({
+      id: 'r1-manduca-nsb',
+      played: false,
+    })
+  })
+
+  it('keeps default players when Firestore has not been seeded yet', () => {
+    expect(mergePlayersWithDefaults([]).map((player) => player.id)).toEqual(defaultPlayers.map((player) => player.id))
   })
 })
 

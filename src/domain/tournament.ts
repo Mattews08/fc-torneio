@@ -119,6 +119,14 @@ export function getRoundBye(matches: Match[], round: number): string | undefined
   return matches.find((match) => match.round === round)?.byePlayerId
 }
 
+export function mergePlayersWithDefaults(firestorePlayers: Player[]): Player[] {
+  return mergeById(defaultPlayers, firestorePlayers)
+}
+
+export function mergeMatchesWithDefaults(firestoreMatches: Match[]): Match[] {
+  return mergeById(defaultMatches, firestoreMatches)
+}
+
 export function calculateStandings(players: Player[], matches: Match[]): StandingRow[] {
   const rows = new Map<string, StandingRow>()
 
@@ -166,6 +174,15 @@ export function calculateStandings(players: Player[], matches: Match[]): Standin
 
     return primary || a.player.name.localeCompare(b.player.name)
   })
+}
+
+function mergeById<T extends { id: string }>(defaults: T[], overrides: T[]): T[] {
+  const overrideById = new Map(overrides.map((item) => [item.id, item]))
+
+  return defaults.map((item) => ({
+    ...item,
+    ...overrideById.get(item.id),
+  }))
 }
 
 function isCompletedMatch(match: Match): match is Match & { homeGoals: number; awayGoals: number } {

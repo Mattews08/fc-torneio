@@ -5,6 +5,8 @@ import {
   defaultPlayers,
   getRoundBye,
   getRoundMatches,
+  mergeMatchesWithDefaults,
+  mergePlayersWithDefaults,
   type Match,
   type Player,
 } from '../domain/tournament'
@@ -47,14 +49,14 @@ export function useTournament(userId: string | undefined) {
     }
   }, [])
 
-  const activePlayers = players.length > 0 ? players : defaultPlayers
-  const activeMatches = matches.length > 0 ? matches : defaultMatches
+  const activePlayers = useMemo(() => mergePlayersWithDefaults(players), [players])
+  const activeMatches = useMemo(() => mergeMatchesWithDefaults(matches), [matches])
 
   const standings = useMemo(() => calculateStandings(activePlayers, activeMatches), [activePlayers, activeMatches])
   const roundMatches = useMemo(() => getRoundMatches(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayerId = useMemo(() => getRoundBye(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayer = activePlayers.find((player) => player.id === byePlayerId)
-  const isSeeded = players.length > 0 && matches.length > 0
+  const isSeeded = players.length >= defaultPlayers.length && matches.length >= defaultMatches.length
 
   async function handleSeed() {
     setError('')
