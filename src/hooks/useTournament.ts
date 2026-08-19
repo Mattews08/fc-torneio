@@ -7,8 +7,10 @@ import {
   getRoundMatches,
   mergeMatchesWithDefaults,
   mergePlayersWithDefaults,
+  calculateTopScorers,
   type Match,
   type Player,
+  type ScorerEntry,
 } from '../domain/tournament'
 import {
   saveMatchScore,
@@ -60,6 +62,7 @@ export function useTournament(userId: string | undefined) {
   const activeMatches = useMemo(() => mergeMatchesWithDefaults(matches), [matches])
 
   const standings = useMemo(() => calculateStandings(activePlayers, activeMatches), [activePlayers, activeMatches])
+  const topScorers = useMemo(() => calculateTopScorers(activePlayers, activeMatches), [activePlayers, activeMatches])
   const roundMatches = useMemo(() => getRoundMatches(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayerId = useMemo(() => getRoundBye(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayer = activePlayers.find((player) => player.id === byePlayerId)
@@ -75,7 +78,7 @@ export function useTournament(userId: string | undefined) {
     }
   }
 
-  async function handleSaveScore(matchId: string, homeGoals: number, awayGoals: number) {
+  async function handleSaveScore(matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[]) {
     if (!userId) {
       setError('Entre com o Google antes de salvar resultados.')
       return
@@ -85,7 +88,7 @@ export function useTournament(userId: string | undefined) {
     setError('')
 
     try {
-      await saveMatchScore(matchId, homeGoals, awayGoals, userId)
+      await saveMatchScore(matchId, homeGoals, awayGoals, scorers, userId)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o placar.')
     } finally {
@@ -106,6 +109,7 @@ export function useTournament(userId: string | undefined) {
   return {
     players: activePlayers,
     standings,
+    topScorers,
     matches: activeMatches,
     roundMatches,
     byePlayer,

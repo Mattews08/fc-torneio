@@ -6,6 +6,8 @@ import { Header } from './components/Header'
 import { LoginScreen } from './components/LoginScreen'
 import { RoundPanel } from './components/RoundPanel'
 import { StandingsTable } from './components/StandingsTable'
+import { TopScorersPage } from './components/TopScorersPage'
+import type { AppView } from './components/Header'
 import { canManageTeams } from './domain/admin'
 import { useTournament } from './hooks/useTournament'
 import { auth, googleProvider } from './services/firebase'
@@ -61,7 +63,7 @@ type DashboardProps = {
 function Dashboard({ user, onSignOut }: DashboardProps) {
   const tournament = useTournament(user.uid)
   const isAdmin = canManageTeams(user.email)
-  const [activeView, setActiveView] = useState<'dashboard' | 'admin'>('dashboard')
+  const [activeView, setActiveView] = useState<AppView>('dashboard')
 
   return (
     <main className="app-shell">
@@ -79,6 +81,8 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
           onSavePlayer={tournament.savePlayer}
           onUploadPhoto={tournament.uploadPlayerPhoto}
         />
+      ) : activeView === 'scorers' ? (
+        <TopScorersPage scorers={tournament.topScorers} />
       ) : (
         <>
           <section className="summary-band">

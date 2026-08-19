@@ -6,6 +6,13 @@ export type Player = {
   photoUrl: string
 }
 
+export type ScorerEntry = {
+  id: string
+  name: string
+  teamPlayerId: string
+  goals: number
+}
+
 export type Match = {
   id: string
   round: number
@@ -16,6 +23,7 @@ export type Match = {
   homeGoals: number | null
   awayGoals: number | null
   played: boolean
+  scorers?: ScorerEntry[]
 }
 
 export type StandingRow = {
@@ -29,6 +37,15 @@ export type StandingRow = {
   goalsAgainst: number
   goalDifference: number
   points: number
+}
+
+export type TopScorerRow = {
+  key: string
+  name: string
+  teamPlayerId: string
+  teamName: string
+  goals: number
+  matches: number
 }
 
 export const defaultPlayers: Player[] = [
@@ -86,6 +103,7 @@ const fixture = (
   homeGoals: null,
   awayGoals: null,
   played: false,
+  scorers: [],
 })
 
 export const defaultMatches: Match[] = [
@@ -174,6 +192,48 @@ export function calculateStandings(players: Player[], matches: Match[]): Standin
 
     return primary || a.player.name.localeCompare(b.player.name)
   })
+}
+
+export function calculateTopScorers(players: Player[], matches: Match[]): TopScorerRow[] {
+  const playerById = new Map(players.map((player) => [player.id, player]))
+  const rows = new Map<string, TopScorerRow & { matchIds: Set<string> }>()
+
+  for (const match of matches) {
+    if (!isCompletedMatch(match)) {
+      continue
+    }
+
+    for (const scorer of match.scorers ?? []) {
+      const name = scorer.name.trim()
+
+      if (!name || !Number.isInteger(scorer.goals) || scorer.goals <= 0) {
+        continue
+      }
+
+      const key = `${scorer.teamPlayerId}:${name.toLowerCase()}`
+      const existing = rows.get(key)
+
+      if (existing) {
+        existing.goals += scorer.goals
+        existing.matchIds.add(match.id)
+        existing.matches = existing.matchIds.size
+      } else {
+        rows.set(key, {
+          key,
+          name,
+          teamPlayerId: scorer.teamPlayerId,
+          teamName: playerById.get(scorer.teamPlayerId)?.name ?? 'Sem time',
+          goals: scorer.goals,
+          matches: 1,
+          matchIds: new Set([match.id]),
+        })
+      }
+    }
+  }
+
+  return [...rows.values()]
+    .map(({ matchIds: _matchIds, ...row }) => row)
+    .sort((a, b) => b.goals - a.goals || a.matches - b.matches || a.name.localeCompare(b.name))
 }
 
 function mergeById<T extends { id: string }>(defaults: T[], overrides: T[]): T[] {

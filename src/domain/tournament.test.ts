@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculateStandings,
+  calculateTopScorers,
   defaultMatches,
   defaultPlayers,
   getRoundBye,
@@ -160,6 +161,65 @@ describe('calculateStandings', () => {
       'capflint',
       'nsb',
       'leo',
+    ])
+  })
+})
+
+describe('calculateTopScorers', () => {
+  it('sums scorer goals across completed matches and sorts by goals', () => {
+    const matches: Match[] = [
+      {
+        ...defaultMatches[0],
+        homeGoals: 3,
+        awayGoals: 1,
+        played: true,
+        scorers: [
+          { id: 's1', name: 'Haaland', teamPlayerId: 'manduca', goals: 2 },
+          { id: 's2', name: 'Vini Jr', teamPlayerId: 'nsb', goals: 1 },
+        ],
+      },
+      {
+        ...defaultMatches[1],
+        homeGoals: 2,
+        awayGoals: 0,
+        played: true,
+        scorers: [
+          { id: 's3', name: 'Haaland', teamPlayerId: 'manduca', goals: 1 },
+          { id: 's4', name: 'Mbappe', teamPlayerId: 'falcon', goals: 2 },
+        ],
+      },
+      {
+        ...defaultMatches[2],
+        played: false,
+        scorers: [{ id: 's5', name: 'Nao Conta', teamPlayerId: 'capflint', goals: 9 }],
+      },
+    ]
+
+    expect(calculateTopScorers(defaultPlayers, matches)).toEqual([
+      {
+        key: 'manduca:haaland',
+        name: 'Haaland',
+        teamPlayerId: 'manduca',
+        teamName: 'Manduca',
+        goals: 3,
+        matches: 2,
+      },
+      {
+        key: 'falcon:mbappe',
+        name: 'Mbappe',
+        teamPlayerId: 'falcon',
+        teamName: 'Falcon',
+        goals: 2,
+        matches: 1,
+      },
+      {
+        key: 'nsb:vini jr',
+        name: 'Vini Jr',
+        teamPlayerId: 'nsb',
+        teamName: 'NSB',
+        goals: 1,
+        matches: 1,
+      },
     ])
   })
 })

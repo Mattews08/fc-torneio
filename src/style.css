@@ -211,6 +211,12 @@ p {
   gap: 10px;
 }
 
+.view-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .user-photo,
 .crest {
   width: 38px;
@@ -428,6 +434,64 @@ select {
   font-weight: 900;
 }
 
+.scorer-editor {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.scorer-editor-heading,
+.scorer-card {
+  display: flex;
+  align-items: center;
+}
+
+.scorer-editor-heading {
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--pl-purple);
+  font-size: 0.9rem;
+}
+
+.mini-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 9px;
+  color: var(--pl-purple);
+  background: var(--surface-soft);
+  font-weight: 800;
+}
+
+.scorer-drafts {
+  display: grid;
+  gap: 8px;
+}
+
+.scorer-draft-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1.4fr) minmax(96px, 1fr) 70px 38px;
+  gap: 8px;
+}
+
+.scorer-draft-row input,
+.scorer-draft-row select {
+  width: 100%;
+}
+
+.remove-scorer-button {
+  width: 38px;
+}
+
+.empty-scorers {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .field-error,
 .alert {
   border-radius: 6px;
@@ -494,6 +558,78 @@ select {
   display: grid;
   gap: 12px;
   padding: 0 18px 18px;
+}
+
+.scorers-panel {
+  margin-top: 16px;
+}
+
+.scorers-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.scorer-card {
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.scorer-position {
+  flex: 0 0 auto;
+}
+
+.scorer-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.scorer-main strong {
+  color: var(--pl-purple);
+}
+
+.scorer-main span,
+.scorer-stats span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.scorer-stats {
+  display: grid;
+  min-width: 74px;
+  justify-items: end;
+  color: var(--pl-purple);
+}
+
+.scorer-stats strong {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.muted-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: auto;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 48px 18px;
+  color: var(--pl-purple);
+  text-align: center;
+}
+
+.empty-state span {
+  max-width: 360px;
+  color: var(--muted);
 }
 
 .admin-team-form {
@@ -625,6 +761,13 @@ select {
 
   .user-area {
     justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .view-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .dashboard-grid {
@@ -654,5 +797,19 @@ select {
 
   .admin-team-form .save-button {
     width: 100%;
+  }
+
+  .scorer-draft-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scorer-card {
+    display: grid;
+    justify-items: stretch;
+  }
+
+  .scorer-stats,
+  .muted-stat {
+    justify-items: start;
   }
 }

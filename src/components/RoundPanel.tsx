@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Moon } from 'lucide-react'
-import type { Match, Player } from '../domain/tournament'
+import type { Match, Player, ScorerEntry } from '../domain/tournament'
 import { MatchEditor } from './MatchEditor'
 
 type RoundPanelProps = {
@@ -9,7 +9,7 @@ type RoundPanelProps = {
   selectedRound: number
   savingMatchId: string | null
   onRoundChange: (round: number) => void
-  onSaveScore: (matchId: string, homeGoals: number, awayGoals: number) => Promise<void>
+  onSaveScore: (matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[]) => Promise<void>
 }
 
 export function RoundPanel({

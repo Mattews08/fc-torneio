@@ -1,11 +1,13 @@
 import type { User } from 'firebase/auth'
-import { LogOut, Shield, Trophy, UsersRound } from 'lucide-react'
+import { BarChart3, LogOut, Shield, Trophy, UsersRound } from 'lucide-react'
+
+export type AppView = 'dashboard' | 'scorers' | 'admin'
 
 type HeaderProps = {
   user: User
   isAdmin?: boolean
-  activeView?: 'dashboard' | 'admin'
-  onViewChange?: (view: 'dashboard' | 'admin') => void
+  activeView?: AppView
+  onViewChange?: (view: AppView) => void
   onSignOut: () => void
 }
 
@@ -23,14 +25,32 @@ export function Header({ user, isAdmin = false, activeView = 'dashboard', onView
       </div>
 
       <div className="user-area">
+        <nav className="view-nav" aria-label="Navegacao principal">
+          <button
+            className={activeView === 'dashboard' ? 'nav-button active' : 'nav-button'}
+            type="button"
+            onClick={() => onViewChange?.('dashboard')}
+          >
+            <Trophy size={17} aria-hidden="true" />
+            Tabela
+          </button>
+          <button
+            className={activeView === 'scorers' ? 'nav-button active' : 'nav-button'}
+            type="button"
+            onClick={() => onViewChange?.('scorers')}
+          >
+            <BarChart3 size={17} aria-hidden="true" />
+            Artilheiros
+          </button>
+        </nav>
         {isAdmin ? (
           <button
             className={activeView === 'admin' ? 'nav-button active' : 'nav-button'}
             type="button"
-            onClick={() => onViewChange?.(activeView === 'admin' ? 'dashboard' : 'admin')}
+            onClick={() => onViewChange?.('admin')}
           >
             <UsersRound size={17} aria-hidden="true" />
-            {activeView === 'admin' ? 'Tabela' : 'Admin'}
+            Admin
           </button>
         ) : null}
         {user.photoURL ? <img src={user.photoURL} alt="" className="user-photo" /> : <Shield size={22} aria-hidden="true" />}

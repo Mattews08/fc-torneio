@@ -9,7 +9,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { defaultMatches, defaultPlayers, type Match, type Player } from '../domain/tournament'
+import { defaultMatches, defaultPlayers, type Match, type Player, type ScorerEntry } from '../domain/tournament'
 import { db, storage } from './firebase'
 
 type DataCallback<T> = (data: T[]) => void
@@ -64,7 +64,7 @@ export async function seedTournament() {
   await batch.commit()
 }
 
-export async function saveMatchScore(matchId: string, homeGoals: number, awayGoals: number, userId: string) {
+export async function saveMatchScore(matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[], userId: string) {
   const defaultMatch = defaultMatches.find((match) => match.id === matchId)
 
   if (!defaultMatch) {
@@ -76,6 +76,7 @@ export async function saveMatchScore(matchId: string, homeGoals: number, awayGoa
     homeGoals,
     awayGoals,
     played: true,
+    scorers,
     updatedAt: serverTimestamp(),
     updatedBy: userId,
   }, { merge: true })
