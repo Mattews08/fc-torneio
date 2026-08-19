@@ -39,6 +39,10 @@ type ApiSquadResponse = {
   }>
 }
 
+type ApiFootballErrorResponse = {
+  errors?: Record<string, unknown> | string[] | string
+}
+
 export async function fetchTeamRoster(teamName: string): Promise<SyncedTeamRoster> {
   const apiKey = import.meta.env.VITE_APISPORTS_KEY
 
@@ -89,15 +93,12 @@ export function normalizeSquadResponse(data: ApiSquadResponse): SquadPlayer[] {
 }
 
 async function searchTeam(teamName: string, apiKey: string) {
-  const response = await fetch(`${API_BASE_URL}/teams?search=${encodeURIComponent(teamName)}`, {
-    headers: { 'x-apisports-key': apiKey },
-  })
-
-  if (!response.ok) {
-    throw new Error(`API-Football falhou ao buscar time (${response.status}).`)
-  }
-
-  const team = normalizeTeamSearchResponse(await response.json())
+  const data = await requestApiFootball<ApiTeamSearchResponse>(
+    `/teams?search=${encodeURIComponent(teamName)}`,
+    apiKey,
+    'buscar time',
+  )
+  const team = normalizeTeamSearchResponse(data)
 
   if (!team) {
     throw new Error(`Nenhum time encontrado para "${teamName}".`)
@@ -107,13 +108,44 @@ async function searchTeam(teamName: string, apiKey: string) {
 }
 
 async function fetchSquad(teamId: number, apiKey: string) {
-  const response = await fetch(`${API_BASE_URL}/players/squads?team=${teamId}`, {
-    headers: { 'x-apisports-key': apiKey },
-  })
+  const data = await requestApiFootball<ApiSquadResponse>(`/players/squads?team=${teamId}`, apiKey, 'buscar elenco')
 
-  if (!response.ok) {
-    throw new Error(`API-Football falhou ao buscar elenco (${response.status}).`)
+  return normalizeSquadResponse(data)
+}
+
+async function requestApiFootball<T>(path: string, apiKey: string, action: string): Promise<T> {
+  let response: Response
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { 'x-apisports-key': apiKey },
+    })
+  } catch {
+    throw new Error('Nao consegui acessar a API-Football pelo navegador. Confira a chave e tente novamente.')
   }
 
-  return normalizeSquadResponse(await response.json())
+  if (!response.ok) {
+    const apiMessage = await readApiFootballError(response)
+    throw new Error(apiMessage ?? `API-Football falhou ao ${action} (${response.status}).`)
+  }
+
+  return response.json()
+}
+
+async function readApiFootballError(response: Response) {
+  try {
+    const data = (await response.json()) as ApiFootballErrorResponse
+
+    if (typeof data.errors === 'object' && data.errors !== null && !Array.isArray(data.errors)) {
+      const tokenError = data.errors.token
+
+      if (typeof tokenError === 'string' && tokenError) {
+        return 'Chave da API-Football invalida. Confira a VITE_APISPORTS_KEY.'
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
 }
