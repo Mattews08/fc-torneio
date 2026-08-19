@@ -116,6 +116,7 @@ p {
 .primary-button,
 .secondary-button,
 .save-button,
+.nav-button,
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -153,6 +154,19 @@ p {
   padding: 0 12px;
   color: var(--pl-purple);
   background: var(--pl-cyan);
+}
+
+.nav-button {
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--pl-purple);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+
+.nav-button.active {
+  color: #fff;
+  background: var(--pl-purple);
 }
 
 .app-header,
@@ -448,6 +462,140 @@ select {
   color: var(--muted);
 }
 
+.admin-panel {
+  margin-top: 16px;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 8px 10px;
+  color: var(--pl-purple);
+  background: rgba(5, 242, 108, 0.18);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.admin-feedback {
+  margin: 0 18px 12px;
+}
+
+.success-message {
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #07542a;
+  background: rgba(5, 242, 108, 0.16);
+  font-size: 0.9rem;
+}
+
+.admin-team-list {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.admin-team-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.9fr) repeat(3, minmax(140px, 1fr)) minmax(160px, 0.8fr);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-preview div,
+.admin-team-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-preview strong,
+.admin-preview span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-preview span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.photo-preview {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--pl-purple);
+  background: linear-gradient(135deg, var(--pl-lime), var(--pl-cyan));
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.admin-team-form label > span:first-child {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-team-form input {
+  width: 100%;
+  padding: 0 10px;
+}
+
+.file-control {
+  position: relative;
+}
+
+.file-control input {
+  position: absolute;
+  inset: auto;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.file-label {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--pl-purple);
+  background: var(--surface-soft);
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .loading-screen {
   color: var(--pl-purple);
   font-weight: 800;
@@ -497,6 +645,14 @@ select {
   }
 
   .secondary-button {
+    width: 100%;
+  }
+
+  .admin-team-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-team-form .save-button {
     width: 100%;
   }
 }

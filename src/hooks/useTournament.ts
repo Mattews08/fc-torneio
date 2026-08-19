@@ -10,7 +10,14 @@ import {
   type Match,
   type Player,
 } from '../domain/tournament'
-import { saveMatchScore, seedTournament, subscribeMatches, subscribePlayers } from '../services/tournamentRepository'
+import {
+  saveMatchScore,
+  savePlayerProfile,
+  seedTournament,
+  subscribeMatches,
+  subscribePlayers,
+  uploadPlayerPhoto,
+} from '../services/tournamentRepository'
 
 export function useTournament(userId: string | undefined) {
   const [players, setPlayers] = useState<Player[]>([])
@@ -86,6 +93,16 @@ export function useTournament(userId: string | undefined) {
     }
   }
 
+  async function handleSavePlayer(player: Player) {
+    if (!userId) {
+      setError('Entre com o Google antes de salvar times.')
+      return
+    }
+
+    setError('')
+    await savePlayerProfile(player, userId)
+  }
+
   return {
     players: activePlayers,
     standings,
@@ -100,5 +117,7 @@ export function useTournament(userId: string | undefined) {
     savingMatchId,
     seedTournament: handleSeed,
     saveScore: handleSaveScore,
+    savePlayer: handleSavePlayer,
+    uploadPlayerPhoto,
   }
 }

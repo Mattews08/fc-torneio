@@ -8,8 +8,9 @@ import {
   type FirestoreError,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { defaultMatches, defaultPlayers, type Match, type Player } from '../domain/tournament'
-import { db } from './firebase'
+import { db, storage } from './firebase'
 
 type DataCallback<T> = (data: T[]) => void
 type ErrorCallback = (error: FirestoreError) => void
@@ -78,6 +79,23 @@ export async function saveMatchScore(matchId: string, homeGoals: number, awayGoa
     updatedAt: serverTimestamp(),
     updatedBy: userId,
   }, { merge: true })
+}
+
+export async function savePlayerProfile(player: Player, userId: string) {
+  await setDoc(doc(playersRef, player.id), {
+    ...player,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId,
+  }, { merge: true })
+}
+
+export async function uploadPlayerPhoto(playerId: string, file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const photoRef = ref(storage, `players/${playerId}/photo.${extension}`)
+
+  await uploadBytes(photoRef, file, { contentType: file.type || 'image/jpeg' })
+
+  return getDownloadURL(photoRef)
 }
 
 function getPlayerOrder(playerId: string) {
