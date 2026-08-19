@@ -40,6 +40,42 @@ describe('AdminTeamsPanel', () => {
       teamName: 'Real Mattheus',
       crestUrl: 'https://cdn.example.com/crest.png',
       photoUrl: 'https://cdn.example.com/capflint.png',
+      apiFootballTeamId: undefined,
+      squad: undefined,
+    })
+  })
+
+  it('fills crest and squad from the current team name', async () => {
+    const savePlayer = vi.fn().mockResolvedValue(undefined)
+    const uploadPhoto = vi.fn().mockResolvedValue('')
+    const syncRoster = vi.fn().mockResolvedValue({
+      teamId: 541,
+      teamName: 'Real Madrid',
+      crestUrl: 'https://media.api-sports.io/football/teams/541.png',
+      squad: [{ id: 1, name: 'Kylian Mbappe', number: 10, position: 'Attacker', photo: 'mbappe.png' }],
+    })
+    const user = userEvent.setup()
+
+    render(
+      <AdminTeamsPanel
+        players={[{ ...players[0], teamName: 'Real Madrid' }]}
+        onSavePlayer={savePlayer}
+        onUploadPhoto={uploadPhoto}
+        onSyncTeamRoster={syncRoster}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Puxar elenco Capflint' }))
+
+    expect(syncRoster).toHaveBeenCalledWith('Real Madrid')
+    expect(savePlayer).toHaveBeenCalledWith({
+      id: 'capflint',
+      name: 'Capflint',
+      teamName: 'Real Madrid',
+      crestUrl: 'https://media.api-sports.io/football/teams/541.png',
+      photoUrl: '',
+      apiFootballTeamId: 541,
+      squad: [{ id: 1, name: 'Kylian Mbappe', number: 10, position: 'Attacker', photo: 'mbappe.png' }],
     })
   })
 })

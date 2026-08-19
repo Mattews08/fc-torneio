@@ -1,11 +1,13 @@
-import { ImagePlus, Save, ShieldCheck } from 'lucide-react'
+import { Download, ImagePlus, Save, ShieldCheck } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { Player } from '../domain/tournament'
+import type { SyncedTeamRoster } from '../services/apiFootball'
 
 type AdminTeamsPanelProps = {
   players: Player[]
   onSavePlayer: (player: Player) => Promise<void>
   onUploadPhoto: (playerId: string, file: File) => Promise<string>
+  onSyncTeamRoster?: (teamName: string) => Promise<SyncedTeamRoster>
 }
 
 type PlayerDraft = Player & {
@@ -13,9 +15,10 @@ type PlayerDraft = Player & {
   photoFile: File | null
 }
 
-export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto }: AdminTeamsPanelProps) {
+export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTeamRoster }: AdminTeamsPanelProps) {
   const [drafts, setDrafts] = useState<PlayerDraft[]>(() => createDrafts(players))
   const [savingPlayerId, setSavingPlayerId] = useState<string | null>(null)
+  const [syncingPlayerId, setSyncingPlayerId] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -50,6 +53,8 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto }: AdminT
         teamName: draft.teamName.trim(),
         crestUrl: draft.crestUrl.trim(),
         photoUrl,
+        apiFootballTeamId: draft.apiFootballTeamId,
+        squad: draft.squad,
       })
 
       updateDraft(draft.id, { photoFile: null, photoUrl })
@@ -58,6 +63,50 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto }: AdminT
       setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o time.')
     } finally {
       setSavingPlayerId(null)
+    }
+  }
+
+  async function handleSyncRoster(draft: PlayerDraft) {
+    setError('')
+    setMessage('')
+
+    if (!onSyncTeamRoster) {
+      return
+    }
+
+    if (!draft.teamName.trim()) {
+      setError('Preencha o time antes de puxar elenco.')
+      return
+    }
+
+    setSyncingPlayerId(draft.id)
+
+    try {
+      const synced = await onSyncTeamRoster(draft.teamName.trim())
+      const updatedDraft = {
+        ...draft,
+        teamName: synced.teamName,
+        crestUrl: synced.crestUrl,
+        apiFootballTeamId: synced.teamId,
+        squad: synced.squad,
+      }
+
+      await onSavePlayer({
+        id: updatedDraft.id,
+        name: updatedDraft.name.trim(),
+        teamName: updatedDraft.teamName,
+        crestUrl: updatedDraft.crestUrl,
+        photoUrl: updatedDraft.photoUrl,
+        apiFootballTeamId: updatedDraft.apiFootballTeamId,
+        squad: updatedDraft.squad,
+      })
+
+      updateDraft(draft.id, updatedDraft)
+      setMessage(`${draft.name.trim()} sincronizado com ${synced.teamName}.`)
+    } catch (syncError) {
+      setError(syncError instanceof Error ? syncError.message : 'Nao foi possivel puxar o elenco.')
+    } finally {
+      setSyncingPlayerId(null)
     }
   }
 
@@ -131,6 +180,18 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto }: AdminT
                 {draft.photoFile?.name ?? 'Escolher foto'}
               </span>
             </label>
+
+            {onSyncTeamRoster ? (
+              <button
+                className="sync-button"
+                type="button"
+                disabled={syncingPlayerId === draft.id || savingPlayerId === draft.id}
+                onClick={() => handleSyncRoster(draft)}
+              >
+                <Download size={16} aria-hidden="true" />
+                {syncingPlayerId === draft.id ? 'Buscando' : `Puxar elenco ${draft.initialName}`}
+              </button>
+            ) : null}
 
             <button className="save-button" type="submit" disabled={savingPlayerId === draft.id}>
               <Save size={16} aria-hidden="true" />

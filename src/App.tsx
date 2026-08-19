@@ -80,6 +80,7 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
           players={tournament.players}
           onSavePlayer={tournament.savePlayer}
           onUploadPhoto={tournament.uploadPlayerPhoto}
+          onSyncTeamRoster={tournament.syncTeamRoster}
         />
       ) : activeView === 'scorers' ? (
         <TopScorersPage scorers={tournament.topScorers} />

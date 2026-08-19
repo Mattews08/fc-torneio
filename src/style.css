@@ -156,6 +156,20 @@ p {
   background: var(--pl-cyan);
 }
 
+.sync-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 12px;
+  color: var(--pl-purple);
+  background: var(--surface-soft);
+  font-weight: 800;
+}
+
 .nav-button {
   min-height: 38px;
   padding: 0 12px;
@@ -634,7 +648,7 @@ select {
 
 .admin-team-form {
   display: grid;
-  grid-template-columns: minmax(180px, 0.9fr) repeat(3, minmax(140px, 1fr)) minmax(160px, 0.8fr);
+  grid-template-columns: minmax(180px, 0.9fr) repeat(3, minmax(140px, 1fr)) repeat(2, minmax(150px, 0.8fr));
   gap: 12px;
   align-items: end;
   padding: 12px;
@@ -795,7 +809,8 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .admin-team-form .save-button {
+  .admin-team-form .save-button,
+  .admin-team-form .sync-button {
     width: 100%;
   }
 

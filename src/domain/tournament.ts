@@ -4,6 +4,16 @@ export type Player = {
   teamName: string
   crestUrl: string
   photoUrl: string
+  apiFootballTeamId?: number
+  squad?: SquadPlayer[]
+}
+
+export type SquadPlayer = {
+  id: number
+  name: string
+  number: number | null
+  position: string
+  photo: string
 }
 
 export type ScorerEntry = {

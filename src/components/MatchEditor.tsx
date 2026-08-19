@@ -70,6 +70,18 @@ export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: M
     setScorerDrafts((drafts) => drafts.filter((draft) => draft.id !== scorerId))
   }
 
+  function getSquadOptions(teamPlayerId: string) {
+    if (teamPlayerId === homePlayer.id) {
+      return homePlayer.squad ?? []
+    }
+
+    if (teamPlayerId === awayPlayer.id) {
+      return awayPlayer.squad ?? []
+    }
+
+    return []
+  }
+
   return (
     <form className={match.played ? 'match-editor played' : 'match-editor'} onSubmit={handleSubmit}>
       <div className="match-teams">
@@ -111,12 +123,26 @@ export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: M
           <div className="scorer-drafts">
             {scorerDrafts.map((draft, index) => (
               <div className="scorer-draft-row" key={draft.id}>
+                {(() => {
+                  const datalistId = `scorer-options-${match.id}-${draft.id}`
+                  const squadOptions = getSquadOptions(draft.teamPlayerId)
+
+                  return (
+                    <>
                 <input
                   aria-label={`Nome do artilheiro ${index + 1}`}
+                  list={datalistId}
                   placeholder="Nome"
                   value={draft.name}
                   onChange={(event) => updateScorerDraft(draft.id, { name: event.target.value })}
                 />
+                <datalist id={datalistId}>
+                  {squadOptions.map((player) => (
+                    <option value={player.name} key={player.id}>
+                      {player.name}
+                    </option>
+                  ))}
+                </datalist>
                 <select
                   aria-label={`Time do artilheiro ${index + 1}`}
                   value={draft.teamPlayerId}
@@ -135,6 +161,9 @@ export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: M
                 <button className="icon-button remove-scorer-button" type="button" onClick={() => removeScorerDraft(draft.id)} title="Remover artilheiro">
                   <Trash2 size={15} aria-hidden="true" />
                 </button>
+                    </>
+                  )
+                })()}
               </div>
             ))}
           </div>

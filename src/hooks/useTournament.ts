@@ -20,6 +20,7 @@ import {
   subscribePlayers,
   uploadPlayerPhoto,
 } from '../services/tournamentRepository'
+import { fetchTeamRoster } from '../services/apiFootball'
 
 export function useTournament(userId: string | undefined) {
   const [players, setPlayers] = useState<Player[]>([])
@@ -106,6 +107,10 @@ export function useTournament(userId: string | undefined) {
     await savePlayerProfile(player, userId)
   }
 
+  async function handleSyncTeamRoster(teamName: string) {
+    return fetchTeamRoster(teamName)
+  }
+
   return {
     players: activePlayers,
     standings,
@@ -123,5 +128,6 @@ export function useTournament(userId: string | undefined) {
     saveScore: handleSaveScore,
     savePlayer: handleSavePlayer,
     uploadPlayerPhoto,
+    syncTeamRoster: handleSyncTeamRoster,
   }
 }
