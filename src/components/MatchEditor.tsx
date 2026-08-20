@@ -25,7 +25,7 @@ type ScorerDraft = {
 
 export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: MatchEditorProps) {
   if (match.played) {
-    return <LockedMatchCard match={match} homePlayer={homePlayer} awayPlayer={awayPlayer} saving={saving} onSave={onSave} />
+    return <LockedMatchCard match={match} homePlayer={homePlayer} awayPlayer={awayPlayer} />
   }
 
   return (
@@ -33,55 +33,18 @@ export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: M
   )
 }
 
-type LockedMatchCardProps = MatchEditorProps
+type LockedMatchCardProps = {
+  match: Match
+  homePlayer: Player
+  awayPlayer: Player
+}
 
-function LockedMatchCard({ match, homePlayer, awayPlayer, saving, onSave }: LockedMatchCardProps) {
+function LockedMatchCard({ match, homePlayer, awayPlayer }: LockedMatchCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const [scorerDrafts, setScorerDrafts] = useState<ScorerDraft[]>(() => createScorerDrafts(match.scorers ?? [], homePlayer.id))
-  const [localError, setLocalError] = useState('')
-
-  useEffect(() => {
-    setScorerDrafts(createScorerDrafts(match.scorers ?? [], homePlayer.id))
-    setLocalError('')
-  }, [homePlayer.id, match.id, match.scorers])
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const parsedScorers = parseScorers(scorerDrafts)
-
-    if (!parsedScorers.valid) {
-      setLocalError('Preencha nome e gols inteiros positivos para cada artilheiro.')
-      return
-    }
-
-    setLocalError('')
-    // O placar (match.homeGoals/match.awayGoals) fica travado para sempre depois de
-    // jogado; so os artilheiros podem ser corrigidos aqui.
-    await onSave(match.id, match.homeGoals ?? 0, match.awayGoals ?? 0, parsedScorers.scorers)
-  }
-
-  function updateScorerDraft(scorerId: string, updates: Partial<ScorerDraft>) {
-    setScorerDrafts((drafts) => drafts.map((draft) => (draft.id === scorerId ? { ...draft, ...updates } : draft)))
-  }
-
-  function addScorerDraft() {
-    setScorerDrafts((drafts) => [
-      ...drafts,
-      {
-        id: `draft-${crypto.randomUUID?.() ?? Date.now().toString()}`,
-        name: '',
-        teamPlayerId: homePlayer.id,
-        goals: '1',
-      },
-    ])
-  }
-
-  function removeScorerDraft(scorerId: string) {
-    setScorerDrafts((drafts) => drafts.filter((draft) => draft.id !== scorerId))
-  }
+  const hasScorers = Boolean(match.scorers && match.scorers.length > 0)
 
   return (
-    <form className="rounded-xl border border-border/70 bg-card" onSubmit={handleSubmit}>
+    <div className="rounded-xl border border-border/70 bg-card">
       <button
         type="button"
         className="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2.5 text-left"
@@ -112,32 +75,27 @@ function LockedMatchCard({ match, homePlayer, awayPlayer, saving, onSave }: Lock
             <strong className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Artilheiros da partida
             </strong>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Lock size={11} aria-hidden="true" />
-              Placar encerrado, nao pode ser editado
-            </span>
+            <span className="text-xs text-muted-foreground">Placar encerrado, nao pode ser editado</span>
           </div>
 
-          <ScorerFieldsEditor
-            scorerDrafts={scorerDrafts}
-            homePlayer={homePlayer}
-            awayPlayer={awayPlayer}
-            onAddScorer={addScorerDraft}
-            onUpdateScorer={updateScorerDraft}
-            onRemoveScorer={removeScorerDraft}
-          />
-
-          {localError ? <p className="text-xs font-medium text-destructive">{localError}</p> : null}
-
-          <div className="flex justify-end">
-            <Button variant="cyan" size="sm" type="submit" disabled={saving}>
-              <Save size={14} aria-hidden="true" />
-              {saving ? 'Salvando' : 'Salvar artilheiros'}
-            </Button>
-          </div>
+          {hasScorers ? (
+            <ul className="flex flex-col gap-1.5">
+              {match.scorers?.map((scorer) => (
+                <li key={scorer.id} className="flex items-center justify-between text-sm">
+                  <span className="text-foreground">{scorer.name}</span>
+                  <span className="text-muted-foreground">
+                    {scorer.teamPlayerId === homePlayer.id ? homePlayer.name : awayPlayer.name} · {scorer.goals}{' '}
+                    {scorer.goals === 1 ? 'gol' : 'gols'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum artilheiro informado.</p>
+          )}
         </div>
       ) : null}
-    </form>
+    </div>
   )
 }
 
