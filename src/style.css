@@ -648,7 +648,7 @@ select {
 
 .admin-team-form {
   display: grid;
-  grid-template-columns: minmax(180px, 0.9fr) repeat(3, minmax(140px, 1fr)) repeat(2, minmax(150px, 0.8fr));
+  grid-template-columns: minmax(170px, 0.9fr) repeat(4, minmax(120px, 1fr)) repeat(2, minmax(140px, 0.8fr));
   gap: 12px;
   align-items: end;
   padding: 12px;

@@ -7,7 +7,7 @@ type AdminTeamsPanelProps = {
   players: Player[]
   onSavePlayer: (player: Player) => Promise<void>
   onUploadPhoto: (playerId: string, file: File) => Promise<string>
-  onSyncTeamRoster?: (teamName: string) => Promise<SyncedTeamRoster>
+  onSyncTeamRoster?: (teamName: string, teamId?: number) => Promise<SyncedTeamRoster>
 }
 
 type PlayerDraft = Player & {
@@ -75,14 +75,14 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
     }
 
     if (!draft.teamName.trim()) {
-      setError('Preencha o time antes de puxar elenco.')
+      setError('Preencha o time antes de puxar dados.')
       return
     }
 
     setSyncingPlayerId(draft.id)
 
     try {
-      const synced = await onSyncTeamRoster(draft.teamName.trim())
+      const synced = await onSyncTeamRoster(draft.teamName.trim(), draft.apiFootballTeamId)
       const updatedDraft = {
         ...draft,
         teamName: synced.teamName,
@@ -104,7 +104,7 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
       updateDraft(draft.id, updatedDraft)
       setMessage(`${draft.name.trim()} sincronizado com ${synced.teamName}.`)
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : 'Nao foi possivel puxar o elenco.')
+      setError(syncError instanceof Error ? syncError.message : 'Nao foi possivel puxar os dados do time.')
     } finally {
       setSyncingPlayerId(null)
     }
@@ -167,6 +167,21 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
               />
             </label>
 
+            <label>
+              <span>ID API-Futebol</span>
+              <input
+                aria-label={`ID API-Futebol de ${draft.initialName}`}
+                min="1"
+                type="number"
+                value={draft.apiFootballTeamId ?? ''}
+                onChange={(event) =>
+                  updateDraft(draft.id, {
+                    apiFootballTeamId: event.target.value ? Number(event.target.value) : undefined,
+                  })
+                }
+              />
+            </label>
+
             <label className="file-control">
               <span>Foto</span>
               <input
@@ -189,7 +204,7 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
                 onClick={() => handleSyncRoster(draft)}
               >
                 <Download size={16} aria-hidden="true" />
-                {syncingPlayerId === draft.id ? 'Buscando' : `Puxar elenco ${draft.initialName}`}
+                {syncingPlayerId === draft.id ? 'Buscando' : `Puxar dados ${draft.initialName}`}
               </button>
             ) : null}
 

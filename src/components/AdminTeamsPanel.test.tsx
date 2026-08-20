@@ -45,37 +45,51 @@ describe('AdminTeamsPanel', () => {
     })
   })
 
-  it('fills crest and squad from the current team name', async () => {
+  it('fills crest from the API-Futebol team id', async () => {
     const savePlayer = vi.fn().mockResolvedValue(undefined)
     const uploadPhoto = vi.fn().mockResolvedValue('')
     const syncRoster = vi.fn().mockResolvedValue({
-      teamId: 541,
-      teamName: 'Real Madrid',
-      crestUrl: 'https://media.api-sports.io/football/teams/541.png',
-      squad: [{ id: 1, name: 'Kylian Mbappe', number: 10, position: 'Attacker', photo: 'mbappe.png' }],
+      teamId: 56,
+      teamName: 'Palmeiras',
+      crestUrl: 'https://cdn.api-futebol.com.br/times/escudos/palmeiras.svg',
+      squad: [],
     })
     const user = userEvent.setup()
 
     render(
       <AdminTeamsPanel
-        players={[{ ...players[0], teamName: 'Real Madrid' }]}
+        players={[{ ...players[0], teamName: 'Palmeiras', apiFootballTeamId: 56 }]}
         onSavePlayer={savePlayer}
         onUploadPhoto={uploadPhoto}
         onSyncTeamRoster={syncRoster}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Puxar elenco Capflint' }))
+    await user.click(screen.getByRole('button', { name: 'Puxar dados Capflint' }))
 
-    expect(syncRoster).toHaveBeenCalledWith('Real Madrid')
+    expect(syncRoster).toHaveBeenCalledWith('Palmeiras', 56)
     expect(savePlayer).toHaveBeenCalledWith({
       id: 'capflint',
       name: 'Capflint',
-      teamName: 'Real Madrid',
-      crestUrl: 'https://media.api-sports.io/football/teams/541.png',
+      teamName: 'Palmeiras',
+      crestUrl: 'https://cdn.api-futebol.com.br/times/escudos/palmeiras.svg',
       photoUrl: '',
-      apiFootballTeamId: 541,
-      squad: [{ id: 1, name: 'Kylian Mbappe', number: 10, position: 'Attacker', photo: 'mbappe.png' }],
+      apiFootballTeamId: 56,
+      squad: [],
     })
+  })
+
+  it('saves the API-Futebol team id from the admin form', async () => {
+    const savePlayer = vi.fn().mockResolvedValue(undefined)
+    const uploadPhoto = vi.fn().mockResolvedValue('')
+    const user = userEvent.setup()
+
+    render(<AdminTeamsPanel players={players} onSavePlayer={savePlayer} onUploadPhoto={uploadPhoto} />)
+
+    await user.clear(screen.getByLabelText('ID API-Futebol de Capflint'))
+    await user.type(screen.getByLabelText('ID API-Futebol de Capflint'), '56')
+    await user.click(screen.getByRole('button', { name: 'Salvar Capflint' }))
+
+    expect(savePlayer).toHaveBeenCalledWith(expect.objectContaining({ apiFootballTeamId: 56 }))
   })
 })

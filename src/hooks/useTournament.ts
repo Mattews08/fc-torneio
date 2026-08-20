@@ -107,8 +107,8 @@ export function useTournament(userId: string | undefined) {
     await savePlayerProfile(player, userId)
   }
 
-  async function handleSyncTeamRoster(teamName: string) {
-    return fetchTeamRoster(teamName)
+  async function handleSyncTeamRoster(teamName: string, teamId?: number) {
+    return fetchTeamRoster(teamName, teamId)
   }
 
   return {
