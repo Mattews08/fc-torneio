@@ -62,7 +62,7 @@ export const defaultPlayers: Player[] = [
   {
     id: 'capflint',
     name: 'Capflint',
-    teamName: 'Time Capflint',
+    teamName: 'Bayern Munich',
     crestUrl: '',
     photoUrl: '',
   },
@@ -148,7 +148,7 @@ export function getRoundBye(matches: Match[], round: number): string | undefined
 }
 
 export function mergePlayersWithDefaults(firestorePlayers: Player[]): Player[] {
-  return mergeById(defaultPlayers, firestorePlayers)
+  return mergeById(defaultPlayers, firestorePlayers).map(replaceLegacyPlaceholderTeamName)
 }
 
 export function mergeMatchesWithDefaults(firestoreMatches: Match[]): Match[] {
@@ -253,6 +253,20 @@ function mergeById<T extends { id: string }>(defaults: T[], overrides: T[]): T[]
     ...item,
     ...overrideById.get(item.id),
   }))
+}
+
+function replaceLegacyPlaceholderTeamName(player: Player): Player {
+  const defaultPlayer = defaultPlayers.find((item) => item.id === player.id)
+  const legacyTeamName = `Time ${defaultPlayer?.name}`
+
+  if (defaultPlayer && player.teamName === legacyTeamName) {
+    return {
+      ...player,
+      teamName: defaultPlayer.teamName,
+    }
+  }
+
+  return player
 }
 
 function isCompletedMatch(match: Match): match is Match & { homeGoals: number; awayGoals: number } {

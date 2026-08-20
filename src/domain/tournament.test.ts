@@ -57,6 +57,20 @@ describe('default data merging', () => {
   it('keeps default players when Firestore has not been seeded yet', () => {
     expect(mergePlayersWithDefaults([]).map((player) => player.id)).toEqual(defaultPlayers.map((player) => player.id))
   })
+
+  it('replaces old placeholder team names with real default clubs', () => {
+    const mergedPlayers = mergePlayersWithDefaults([
+      {
+        id: 'capflint',
+        name: 'Capflint',
+        teamName: 'Time Capflint',
+        crestUrl: '',
+        photoUrl: '',
+      },
+    ])
+
+    expect(mergedPlayers.find((player) => player.id === 'capflint')?.teamName).toBe('Bayern Munich')
+  })
 })
 
 describe('calculateStandings', () => {
