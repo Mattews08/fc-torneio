@@ -25,7 +25,7 @@ type ScorerDraft = {
 
 export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: MatchEditorProps) {
   if (match.played) {
-    return <LockedMatchCard match={match} homePlayer={homePlayer} awayPlayer={awayPlayer} />
+    return <LockedMatchCard match={match} homePlayer={homePlayer} awayPlayer={awayPlayer} saving={saving} onSave={onSave} />
   }
 
   return (
@@ -33,21 +33,58 @@ export function MatchEditor({ match, homePlayer, awayPlayer, saving, onSave }: M
   )
 }
 
-type LockedMatchCardProps = {
-  match: Match
-  homePlayer: Player
-  awayPlayer: Player
-}
+type LockedMatchCardProps = MatchEditorProps
 
-function LockedMatchCard({ match, homePlayer, awayPlayer }: LockedMatchCardProps) {
+function LockedMatchCard({ match, homePlayer, awayPlayer, saving, onSave }: LockedMatchCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const hasScorers = Boolean(match.scorers && match.scorers.length > 0)
+  const [scorerDrafts, setScorerDrafts] = useState<ScorerDraft[]>(() => createScorerDrafts(match.scorers ?? [], homePlayer.id))
+  const [localError, setLocalError] = useState('')
+
+  useEffect(() => {
+    setScorerDrafts(createScorerDrafts(match.scorers ?? [], homePlayer.id))
+    setLocalError('')
+  }, [homePlayer.id, match.id, match.scorers])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const parsedScorers = parseScorers(scorerDrafts)
+
+    if (!parsedScorers.valid) {
+      setLocalError('Preencha nome e gols inteiros positivos para cada artilheiro.')
+      return
+    }
+
+    setLocalError('')
+    // O placar (match.homeGoals/match.awayGoals) fica travado para sempre depois de
+    // jogado; so os artilheiros podem ser corrigidos aqui.
+    await onSave(match.id, match.homeGoals ?? 0, match.awayGoals ?? 0, parsedScorers.scorers)
+  }
+
+  function updateScorerDraft(scorerId: string, updates: Partial<ScorerDraft>) {
+    setScorerDrafts((drafts) => drafts.map((draft) => (draft.id === scorerId ? { ...draft, ...updates } : draft)))
+  }
+
+  function addScorerDraft() {
+    setScorerDrafts((drafts) => [
+      ...drafts,
+      {
+        id: `draft-${crypto.randomUUID?.() ?? Date.now().toString()}`,
+        name: '',
+        teamPlayerId: homePlayer.id,
+        goals: '1',
+      },
+    ])
+  }
+
+  function removeScorerDraft(scorerId: string) {
+    setScorerDrafts((drafts) => drafts.filter((draft) => draft.id !== scorerId))
+  }
 
   return (
-    <div className="rounded-xl border border-border/70 bg-card">
+    <form className="rounded-xl border border-border/70 bg-card" onSubmit={handleSubmit}>
       <button
         type="button"
-        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left"
+        className="flex w-full cursor-pointer items-center gap-2.5 px-3.5 py-2.5 text-left"
         aria-expanded={expanded}
         aria-label={`Ver detalhes da partida ${homePlayer.name} ${match.homeGoals} x ${match.awayGoals} ${awayPlayer.name}`}
         onClick={() => setExpanded((value) => !value)}
@@ -75,27 +112,32 @@ function LockedMatchCard({ match, homePlayer, awayPlayer }: LockedMatchCardProps
             <strong className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Artilheiros da partida
             </strong>
-            <span className="text-xs text-muted-foreground">Placar encerrado, nao pode ser editado</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Lock size={11} aria-hidden="true" />
+              Placar encerrado, nao pode ser editado
+            </span>
           </div>
 
-          {hasScorers ? (
-            <ul className="flex flex-col gap-1.5">
-              {match.scorers?.map((scorer) => (
-                <li key={scorer.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{scorer.name}</span>
-                  <span className="text-muted-foreground">
-                    {scorer.teamPlayerId === homePlayer.id ? homePlayer.name : awayPlayer.name} · {scorer.goals}{' '}
-                    {scorer.goals === 1 ? 'gol' : 'gols'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum artilheiro informado.</p>
-          )}
+          <ScorerFieldsEditor
+            scorerDrafts={scorerDrafts}
+            homePlayer={homePlayer}
+            awayPlayer={awayPlayer}
+            onAddScorer={addScorerDraft}
+            onUpdateScorer={updateScorerDraft}
+            onRemoveScorer={removeScorerDraft}
+          />
+
+          {localError ? <p className="text-xs font-medium text-destructive">{localError}</p> : null}
+
+          <div className="flex justify-end">
+            <Button variant="cyan" size="sm" type="submit" disabled={saving}>
+              <Save size={14} aria-hidden="true" />
+              {saving ? 'Salvando' : 'Salvar artilheiros'}
+            </Button>
+          </div>
         </div>
       ) : null}
-    </div>
+    </form>
   )
 }
 
@@ -155,18 +197,6 @@ function EditableMatchForm({ match, homePlayer, awayPlayer, saving, onSave }: Ed
     setScorerDrafts((drafts) => drafts.filter((draft) => draft.id !== scorerId))
   }
 
-  function getSquadOptions(teamPlayerId: string) {
-    if (teamPlayerId === homePlayer.id) {
-      return homePlayer.squad ?? []
-    }
-
-    if (teamPlayerId === awayPlayer.id) {
-      return awayPlayer.squad ?? []
-    }
-
-    return []
-  }
-
   const filledScorerCount = scorerDrafts.filter((draft) => draft.name.trim() || draft.goals.trim()).length
 
   return (
@@ -207,7 +237,7 @@ function EditableMatchForm({ match, homePlayer, awayPlayer, saving, onSave }: Ed
       <div className="border-t border-border/70">
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-2 px-3.5 py-2 text-left"
+          className="flex w-full cursor-pointer items-center justify-between gap-2 px-3.5 py-2 text-left"
           aria-expanded={scorersExpanded}
           onClick={() => setScorersExpanded((value) => !value)}
         >
@@ -222,68 +252,111 @@ function EditableMatchForm({ match, homePlayer, awayPlayer, saving, onSave }: Ed
         </button>
 
         {scorersExpanded ? (
-          <div className="flex flex-col gap-2 px-3.5 pb-3.5">
-            <div className="flex justify-end">
-              <Button variant="outline" size="sm" type="button" onClick={addScorerDraft}>
-                <Plus size={15} aria-hidden="true" />
-                Adicionar
-              </Button>
-            </div>
-
-            {scorerDrafts.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {scorerDrafts.map((draft, index) => {
-                  const squadOptions = getSquadOptions(draft.teamPlayerId)
-
-                  return (
-                    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-1.5" key={draft.id}>
-                      <ScorerNameField
-                        label={`Nome do artilheiro ${index + 1}`}
-                        value={draft.name}
-                        options={squadOptions}
-                        onChange={(name) => updateScorerDraft(draft.id, { name })}
-                      />
-                      <Select
-                        value={draft.teamPlayerId}
-                        onValueChange={(value) => updateScorerDraft(draft.id, { teamPlayerId: value })}
-                      >
-                        <SelectTrigger aria-label={`Time do artilheiro ${index + 1}`} className="w-28" size="sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={homePlayer.id}>{homePlayer.name}</SelectItem>
-                          <SelectItem value={awayPlayer.id}>{awayPlayer.name}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        aria-label={`Gols do artilheiro ${index + 1}`}
-                        className="w-14 text-center"
-                        min="1"
-                        type="number"
-                        value={draft.goals}
-                        onChange={(event) => updateScorerDraft(draft.id, { goals: event.target.value })}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        type="button"
-                        onClick={() => removeScorerDraft(draft.id)}
-                        title="Remover artilheiro"
-                        aria-label={`Remover artilheiro ${index + 1}`}
-                      >
-                        <Trash2 size={15} aria-hidden="true" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nenhum artilheiro informado.</p>
-            )}
+          <div className="px-3.5 pb-3.5">
+            <ScorerFieldsEditor
+              scorerDrafts={scorerDrafts}
+              homePlayer={homePlayer}
+              awayPlayer={awayPlayer}
+              onAddScorer={addScorerDraft}
+              onUpdateScorer={updateScorerDraft}
+              onRemoveScorer={removeScorerDraft}
+            />
           </div>
         ) : null}
       </div>
     </form>
+  )
+}
+
+type ScorerFieldsEditorProps = {
+  scorerDrafts: ScorerDraft[]
+  homePlayer: Player
+  awayPlayer: Player
+  onAddScorer: () => void
+  onUpdateScorer: (scorerId: string, updates: Partial<ScorerDraft>) => void
+  onRemoveScorer: (scorerId: string) => void
+}
+
+function ScorerFieldsEditor({
+  scorerDrafts,
+  homePlayer,
+  awayPlayer,
+  onAddScorer,
+  onUpdateScorer,
+  onRemoveScorer,
+}: ScorerFieldsEditorProps) {
+  function getSquadOptions(teamPlayerId: string) {
+    if (teamPlayerId === homePlayer.id) {
+      return homePlayer.squad ?? []
+    }
+
+    if (teamPlayerId === awayPlayer.id) {
+      return awayPlayer.squad ?? []
+    }
+
+    return []
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" type="button" onClick={onAddScorer}>
+          <Plus size={15} aria-hidden="true" />
+          Adicionar
+        </Button>
+      </div>
+
+      {scorerDrafts.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {scorerDrafts.map((draft, index) => {
+            const squadOptions = getSquadOptions(draft.teamPlayerId)
+
+            return (
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-1.5" key={draft.id}>
+                <ScorerNameField
+                  label={`Nome do artilheiro ${index + 1}`}
+                  value={draft.name}
+                  options={squadOptions}
+                  onChange={(name) => onUpdateScorer(draft.id, { name })}
+                />
+                <Select
+                  value={draft.teamPlayerId}
+                  onValueChange={(value) => onUpdateScorer(draft.id, { teamPlayerId: value })}
+                >
+                  <SelectTrigger aria-label={`Time do artilheiro ${index + 1}`} className="w-28" size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={homePlayer.id}>{homePlayer.name}</SelectItem>
+                    <SelectItem value={awayPlayer.id}>{awayPlayer.name}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  aria-label={`Gols do artilheiro ${index + 1}`}
+                  className="w-14 text-center"
+                  min="1"
+                  type="number"
+                  value={draft.goals}
+                  onChange={(event) => onUpdateScorer(draft.id, { goals: event.target.value })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  type="button"
+                  onClick={() => onRemoveScorer(draft.id)}
+                  title="Remover artilheiro"
+                  aria-label={`Remover artilheiro ${index + 1}`}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Nenhum artilheiro informado.</p>
+      )}
+    </div>
   )
 }
 

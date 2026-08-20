@@ -48,7 +48,7 @@ describe('MatchEditor', () => {
     expect(screen.getByLabelText('Gols de NSB')).toHaveValue(null)
   })
 
-  it('locks the score once the match has been played, showing a collapsed summary by default', () => {
+  it('locks the score forever once the match has been played, showing a collapsed summary by default', () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     const playedMatch = {
       ...defaultMatches[1],
@@ -70,16 +70,50 @@ describe('MatchEditor', () => {
 
     expect(screen.queryByLabelText('Gols de Falcon')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Gols de Leo')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument()
 
     const toggle = screen.getByRole('button', { name: 'Ver detalhes da partida Falcon 2 x 0 Leo' })
-    expect(screen.queryByText('Mbappe')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Mbappe')).not.toBeInTheDocument()
     expect(screen.queryByText('Placar encerrado, nao pode ser editado')).not.toBeInTheDocument()
 
     fireEvent.click(toggle)
 
-    expect(screen.getByText('Mbappe')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Mbappe')).toBeInTheDocument()
     expect(screen.getByText('Placar encerrado, nao pode ser editado')).toBeInTheDocument()
+    // O placar continua travado mesmo com a partida expandida.
+    expect(screen.queryByLabelText('Gols de Falcon')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Gols de Leo')).not.toBeInTheDocument()
+  })
+
+  it('allows editing and saving scorers on an already-played match, without touching the score', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    const playedMatch = {
+      ...defaultMatches[1],
+      homeGoals: 2,
+      awayGoals: 0,
+      played: true,
+      scorers: [{ id: 's1', name: 'Mbappe', teamPlayerId: 'falcon', goals: 2 }],
+    }
+
+    render(
+      <MatchEditor
+        match={playedMatch}
+        homePlayer={defaultPlayers[2]}
+        awayPlayer={defaultPlayers[3]}
+        saving={false}
+        onSave={onSave}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes da partida Falcon 2 x 0 Leo' }))
+
+    const scorerNameInput = screen.getByDisplayValue('Mbappe')
+    fireEvent.change(scorerNameInput, { target: { value: 'Kylian Mbappe' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar artilheiros' }))
+
+    expect(onSave).toHaveBeenCalledWith(playedMatch.id, 2, 0, [
+      { id: 's1', name: 'Kylian Mbappe', teamPlayerId: 'falcon', goals: 2 },
+    ])
   })
 
   it('keeps the scorer list collapsed by default to save vertical space', () => {

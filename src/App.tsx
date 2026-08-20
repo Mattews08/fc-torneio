@@ -88,37 +88,32 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
         <TopScorersPage scorers={tournament.topScorers} />
       ) : (
         <>
-          <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-brand-purple bg-[linear-gradient(135deg,rgba(0,245,255,0.2),transparent_34%),linear-gradient(320deg,rgba(5,242,108,0.24),transparent_28%)] p-6 text-white shadow-lg">
-            <div>
-              <p className="text-xs font-semibold tracking-widest text-white/70 uppercase">MVP Firebase</p>
-              <h2 className="text-xl font-bold">Tabela compartilhada em tempo real</h2>
-            </div>
-            <Button variant="cyan" type="button" onClick={tournament.seedTournament}>
-              <Database aria-hidden="true" />
-              {tournament.isSeeded ? 'Recarregar tabela base' : 'Criar tabela base'}
-            </Button>
-          </section>
-
           {tournament.error ? (
-            <Alert variant="destructive" className="mt-4">
+            <Alert variant="destructive" className="mt-6">
               <AlertDescription>{tournament.error}</AlertDescription>
             </Alert>
           ) : null}
 
           {tournament.loading ? (
-            <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
               <RefreshCw className="animate-spin" size={18} aria-hidden="true" />
               Sincronizando dados
             </div>
           ) : null}
 
           {!tournament.isSeeded ? (
-            <div className="mt-4 flex items-start gap-3 rounded-xl border border-brand-lime/40 bg-success p-4 text-success-foreground">
-              <Sparkles size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
-              <div className="text-sm">
-                <strong className="block font-semibold">Primeiro acesso</strong>
-                <span>Clique em &quot;Criar tabela base&quot; para gravar jogadores e partidas no Firestore.</span>
+            <div className="mt-6 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-brand-lime/40 bg-success p-4 text-success-foreground">
+              <div className="flex items-start gap-3">
+                <Sparkles size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
+                <div className="text-sm">
+                  <strong className="block font-semibold">Primeiro acesso</strong>
+                  <span>Clique em &quot;Criar tabela base&quot; para gravar jogadores e partidas no Firestore.</span>
+                </div>
               </div>
+              <Button variant="cyan" size="sm" type="button" onClick={tournament.seedTournament}>
+                <Database aria-hidden="true" />
+                Criar tabela base
+              </Button>
             </div>
           ) : null}
 
