@@ -14,7 +14,7 @@ export function TopScorersPage({ scorers }: TopScorersPageProps) {
       <CardHeader className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Artilheiros</p>
-          <h2 className="text-lg font-bold text-brand-purple">Ranking de gols</h2>
+          <h2 className="text-lg font-bold text-brand-purple dark:text-primary">Ranking de gols</h2>
         </div>
         <Badge className="gap-1.5 bg-brand-lime text-brand-purple">
           <Goal size={14} aria-hidden="true" />
@@ -46,7 +46,7 @@ export function TopScorersPage({ scorers }: TopScorersPageProps) {
                     <span className="text-xs text-muted-foreground">{scorer.teamName}</span>
                   </TableCell>
                   <TableCell className="text-center">
-                    <strong className="text-base font-bold text-brand-purple">{scorer.goals}</strong>{' '}
+                    <strong className="text-base font-bold text-brand-purple dark:text-primary">{scorer.goals}</strong>{' '}
                     <span className="text-xs text-muted-foreground">{scorer.goals === 1 ? 'gol' : 'gols'}</span>
                   </TableCell>
                   <TableCell className="pr-5 text-center text-muted-foreground">

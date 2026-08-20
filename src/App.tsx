@@ -43,7 +43,7 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-3 text-brand-purple">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 text-brand-purple dark:text-primary">
         <RefreshCw className="animate-spin" size={28} aria-hidden="true" />
         <span className="text-sm font-medium">Carregando Firebase</span>
       </main>

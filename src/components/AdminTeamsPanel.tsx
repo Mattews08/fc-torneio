@@ -122,7 +122,7 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Admin</p>
-          <h2 className="text-lg font-bold text-brand-purple">Times e fotos</h2>
+          <h2 className="text-lg font-bold text-brand-purple dark:text-primary">Times e fotos</h2>
         </div>
         <Badge className="gap-1.5 bg-brand-lime text-brand-purple">
           <ShieldCheck size={14} aria-hidden="true" />
@@ -153,7 +153,7 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
                 <div className="flex items-center gap-3">
                   <Avatar className="size-12 rounded-lg">
                     <AvatarImage src={draft.photoUrl || undefined} alt="" />
-                    <AvatarFallback className="rounded-lg bg-muted text-sm font-bold text-brand-purple">
+                    <AvatarFallback className="rounded-lg bg-muted text-sm font-bold text-brand-purple dark:text-primary">
                       {draft.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

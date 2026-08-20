@@ -56,7 +56,7 @@ function LockedMatchCard({ match, homePlayer, awayPlayer }: LockedMatchCardProps
 
         <span className="flex flex-1 items-center justify-center gap-2 text-sm">
           <span className="truncate font-medium text-foreground">{homePlayer.name}</span>
-          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 font-bold text-brand-purple">
+          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 font-bold text-brand-purple dark:text-primary">
             {match.homeGoals} - {match.awayGoals}
           </span>
           <span className="truncate font-medium text-foreground">{awayPlayer.name}</span>

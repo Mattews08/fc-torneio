@@ -14,7 +14,7 @@ export function StandingsTable({ standings }: StandingsTableProps) {
     <Card className="gap-4 py-5">
       <CardHeader>
         <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Classificação</p>
-        <h2 className="text-lg font-bold text-brand-purple">Tabela geral</h2>
+        <h2 className="text-lg font-bold text-brand-purple dark:text-primary">Tabela geral</h2>
       </CardHeader>
 
       <CardContent className="px-0">
@@ -57,7 +57,7 @@ export function StandingsTable({ standings }: StandingsTableProps) {
                     <div className="flex items-center gap-2.5">
                       <Avatar className="size-9 rounded-lg">
                         <AvatarImage src={row.player.crestUrl || undefined} alt="" />
-                        <AvatarFallback className="rounded-lg bg-muted text-xs font-bold text-brand-purple">
+                        <AvatarFallback className="rounded-lg bg-muted text-xs font-bold text-brand-purple dark:text-primary">
                           {row.player.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -78,7 +78,7 @@ export function StandingsTable({ standings }: StandingsTableProps) {
                   <TableCell
                     className={cn(
                       'text-center font-medium',
-                      row.goalDifference > 0 && 'text-emerald-600',
+                      row.goalDifference > 0 && 'text-emerald-600 dark:text-emerald-400',
                       row.goalDifference < 0 && 'text-destructive',
                     )}
                   >

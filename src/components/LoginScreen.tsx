@@ -19,7 +19,7 @@ export function LoginScreen({ error, onSignIn }: LoginScreenProps) {
           <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             FC Tournament
           </p>
-          <h1 className="text-2xl font-bold text-balance text-brand-purple">
+          <h1 className="text-2xl font-bold text-balance text-brand-purple dark:text-primary">
             Gerencie o campeonato FIFA em pontos corridos.
           </h1>
         </CardHeader>

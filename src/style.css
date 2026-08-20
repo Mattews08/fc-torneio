@@ -75,6 +75,30 @@
   --ring: var(--brand-cyan);
 }
 
+.dark {
+  --background: #120616;
+  --foreground: #f3e9f8;
+  --card: #1c0c22;
+  --card-foreground: #f3e9f8;
+  --popover: #1c0c22;
+  --popover-foreground: #f3e9f8;
+  --primary: #e6c6ff;
+  --primary-foreground: #2b0630;
+  --secondary: var(--brand-lime);
+  --secondary-foreground: #06210f;
+  --muted: #241030;
+  --muted-foreground: #b6a3c4;
+  --accent: #2b1335;
+  --accent-foreground: #f3e9f8;
+  --destructive: var(--brand-pink);
+  --destructive-foreground: #2b0630;
+  --success: rgba(5, 242, 108, 0.16);
+  --success-foreground: #86f5ae;
+  --border: rgba(255, 255, 255, 0.14);
+  --input: rgba(255, 255, 255, 0.18);
+  --ring: var(--brand-cyan);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -86,8 +110,16 @@
     height: 100%;
   }
 
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply overflow-x-hidden bg-background text-foreground;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -96,6 +128,7 @@
       linear-gradient(145deg, rgba(0, 245, 255, 0.12), transparent 34%),
       linear-gradient(315deg, rgba(255, 40, 130, 0.14), transparent 32%);
     background-attachment: fixed;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   button:disabled {

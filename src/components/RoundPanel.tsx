@@ -27,12 +27,12 @@ const ROUND_STATUS_META: Record<RoundStatus, { label: string; dotClassName: stri
   in_progress: {
     label: 'Em andamento',
     dotClassName: 'bg-brand-cyan',
-    badgeClassName: 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-purple',
+    badgeClassName: 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-purple dark:text-primary',
   },
   finished: {
     label: 'Finalizada',
     dotClassName: 'bg-brand-lime',
-    badgeClassName: 'border-brand-lime/50 bg-brand-lime/15 text-emerald-700',
+    badgeClassName: 'border-brand-lime/50 bg-brand-lime/15 text-emerald-700 dark:text-emerald-300',
   },
 }
 
@@ -56,7 +56,7 @@ export function RoundPanel({
         <div>
           <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Partidas</p>
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold text-brand-purple">Rodada {selectedRound}</h2>
+            <h2 className="text-lg font-bold text-brand-purple dark:text-primary">Rodada {selectedRound}</h2>
             <Badge variant="outline" className={cn('gap-1.5', selectedStatusMeta.badgeClassName)}>
               <span className={cn('size-1.5 rounded-full', selectedStatusMeta.dotClassName)} aria-hidden="true" />
               {selectedStatusMeta.label}
@@ -75,7 +75,7 @@ export function RoundPanel({
             <ChevronLeft size={18} aria-hidden="true" />
           </Button>
           <Select value={String(selectedRound)} onValueChange={(value) => onRoundChange(Number(value))}>
-            <SelectTrigger aria-label="Selecionar rodada" className="w-36">
+            <SelectTrigger aria-label="Selecionar rodada" className="w-32 sm:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
