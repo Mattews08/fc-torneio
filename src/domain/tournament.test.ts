@@ -4,10 +4,13 @@ import {
   calculateTopScorers,
   defaultMatches,
   defaultPlayers,
+  getCurrentRound,
   getRoundBye,
   getRoundMatches,
+  getRoundStatus,
   mergeMatchesWithDefaults,
   mergePlayersWithDefaults,
+  TOTAL_ROUNDS,
   type Match,
 } from './tournament'
 
@@ -176,6 +179,57 @@ describe('calculateStandings', () => {
       'nsb',
       'leo',
     ])
+  })
+})
+
+describe('getRoundStatus', () => {
+  it('is not_started when no match in the round has been played', () => {
+    expect(getRoundStatus(defaultMatches, 3)).toBe('not_started')
+  })
+
+  it('is in_progress when only some matches in the round have been played', () => {
+    const matches = mergeMatchesWithDefaults([{ ...defaultMatches[0], played: true, homeGoals: 1, awayGoals: 0 }])
+
+    expect(getRoundStatus(matches, 1)).toBe('in_progress')
+  })
+
+  it('is finished when every match in the round has been played', () => {
+    const matches = mergeMatchesWithDefaults(
+      getRoundMatches(defaultMatches, 1).map((match) => ({ ...match, played: true, homeGoals: 1, awayGoals: 0 })),
+    )
+
+    expect(getRoundStatus(matches, 1)).toBe('finished')
+  })
+})
+
+describe('getCurrentRound', () => {
+  it('opens on round 1 when nothing has been played yet', () => {
+    expect(getCurrentRound(defaultMatches)).toBe(1)
+  })
+
+  it('opens on the round that is in progress', () => {
+    const matches = mergeMatchesWithDefaults([{ ...defaultMatches[0], played: true, homeGoals: 1, awayGoals: 0 }])
+
+    expect(getCurrentRound(matches)).toBe(1)
+  })
+
+  it('skips finished rounds and opens on the next round to start', () => {
+    const round1Finished = getRoundMatches(defaultMatches, 1).map((match) => ({
+      ...match,
+      played: true,
+      homeGoals: 1,
+      awayGoals: 0,
+    }))
+    const matches = mergeMatchesWithDefaults(round1Finished)
+
+    expect(getCurrentRound(matches)).toBe(2)
+  })
+
+  it('falls back to the last round once every round is finished', () => {
+    const allFinished = defaultMatches.map((match) => ({ ...match, played: true, homeGoals: 1, awayGoals: 0 }))
+    const matches = mergeMatchesWithDefaults(allFinished)
+
+    expect(getCurrentRound(matches)).toBe(TOTAL_ROUNDS)
   })
 })
 

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   calculateStandings,
   defaultMatches,
   defaultPlayers,
+  getCurrentRound,
   getRoundBye,
   getRoundMatches,
   mergeMatchesWithDefaults,
@@ -29,6 +30,7 @@ export function useTournament(userId: string | undefined) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null)
+  const hasAutoSelectedRound = useRef(false)
 
   useEffect(() => {
     const unsubscribePlayers = subscribePlayers(
@@ -61,6 +63,15 @@ export function useTournament(userId: string | undefined) {
 
   const activePlayers = useMemo(() => mergePlayersWithDefaults(players), [players])
   const activeMatches = useMemo(() => mergeMatchesWithDefaults(matches), [matches])
+
+  useEffect(() => {
+    if (loading || hasAutoSelectedRound.current) {
+      return
+    }
+
+    hasAutoSelectedRound.current = true
+    setSelectedRound(getCurrentRound(activeMatches))
+  }, [loading, activeMatches])
 
   const standings = useMemo(() => calculateStandings(activePlayers, activeMatches), [activePlayers, activeMatches])
   const topScorers = useMemo(() => calculateTopScorers(activePlayers, activeMatches), [activePlayers, activeMatches])

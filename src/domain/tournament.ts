@@ -1,3 +1,5 @@
+import { defaultSquads } from './squads'
+
 export type Player = {
   id: string
   name: string
@@ -65,6 +67,7 @@ export const defaultPlayers: Player[] = [
     teamName: 'Bayern Munich',
     crestUrl: '',
     photoUrl: '',
+    squad: defaultSquads.capflint,
   },
   {
     id: 'manduca',
@@ -72,6 +75,7 @@ export const defaultPlayers: Player[] = [
     teamName: 'Time Manduca',
     crestUrl: '',
     photoUrl: '',
+    squad: defaultSquads.manduca,
   },
   {
     id: 'falcon',
@@ -79,6 +83,7 @@ export const defaultPlayers: Player[] = [
     teamName: 'Time Falcon',
     crestUrl: '',
     photoUrl: '',
+    squad: defaultSquads.falcon,
   },
   {
     id: 'leo',
@@ -86,6 +91,7 @@ export const defaultPlayers: Player[] = [
     teamName: 'Time Leo',
     crestUrl: '',
     photoUrl: '',
+    squad: defaultSquads.leo,
   },
   {
     id: 'nsb',
@@ -93,6 +99,7 @@ export const defaultPlayers: Player[] = [
     teamName: 'Time NSB',
     crestUrl: '',
     photoUrl: '',
+    squad: defaultSquads.nsb,
   },
 ]
 
@@ -139,6 +146,10 @@ export const defaultMatches: Match[] = [
   fixture('r10-leo-nsb', 10, 'returno', 'leo', 'nsb', 'falcon'),
 ]
 
+export const TOTAL_ROUNDS = Math.max(...defaultMatches.map((match) => match.round))
+
+export type RoundStatus = 'not_started' | 'in_progress' | 'finished'
+
 export function getRoundMatches(matches: Match[], round: number): Match[] {
   return matches.filter((match) => match.round === round)
 }
@@ -147,8 +158,42 @@ export function getRoundBye(matches: Match[], round: number): string | undefined
   return matches.find((match) => match.round === round)?.byePlayerId
 }
 
+export function getRoundStatus(matches: Match[], round: number): RoundStatus {
+  const matchesInRound = getRoundMatches(matches, round)
+
+  if (matchesInRound.length === 0) {
+    return 'not_started'
+  }
+
+  const playedCount = matchesInRound.filter((match) => match.played).length
+
+  if (playedCount === 0) {
+    return 'not_started'
+  }
+
+  if (playedCount === matchesInRound.length) {
+    return 'finished'
+  }
+
+  return 'in_progress'
+}
+
+// Retorna a primeira rodada que ainda nao foi finalizada (em andamento ou prestes
+// a comecar), para o painel abrir direto nela em vez de sempre cair na Rodada 1.
+export function getCurrentRound(matches: Match[]): number {
+  for (let round = 1; round <= TOTAL_ROUNDS; round += 1) {
+    if (getRoundStatus(matches, round) !== 'finished') {
+      return round
+    }
+  }
+
+  return TOTAL_ROUNDS
+}
+
 export function mergePlayersWithDefaults(firestorePlayers: Player[]): Player[] {
-  return mergeById(defaultPlayers, firestorePlayers).map(replaceLegacyPlaceholderTeamName)
+  return mergeById(defaultPlayers, firestorePlayers)
+    .map(replaceLegacyPlaceholderTeamName)
+    .map(fallBackToDefaultSquad)
 }
 
 export function mergeMatchesWithDefaults(firestoreMatches: Match[]): Match[] {
@@ -253,6 +298,23 @@ function mergeById<T extends { id: string }>(defaults: T[], overrides: T[]): T[]
     ...item,
     ...overrideById.get(item.id),
   }))
+}
+
+function fallBackToDefaultSquad(player: Player): Player {
+  if (player.squad && player.squad.length > 0) {
+    return player
+  }
+
+  const defaultSquad = defaultPlayers.find((item) => item.id === player.id)?.squad
+
+  if (!defaultSquad || defaultSquad.length === 0) {
+    return player
+  }
+
+  return {
+    ...player,
+    squad: defaultSquad,
+  }
 }
 
 function replaceLegacyPlaceholderTeamName(player: Player): Player {

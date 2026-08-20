@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
@@ -14,6 +14,9 @@ const firebaseConfig = {
 
 export const firebaseApp = initializeApp(firebaseConfig)
 export const auth = getAuth(firebaseApp)
-export const db = getFirestore(firebaseApp)
+// ignoreUndefinedProperties: campos opcionais como apiFootballTeamId e squad ficam
+// undefined ate o time ser sincronizado com a API-Futebol. Sem essa opcao o
+// Firestore rejeita o setDoc/updateDoc com "Unsupported field value: undefined".
+export const db = initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true })
 export const storage = getStorage(firebaseApp)
 export const googleProvider = new GoogleAuthProvider()

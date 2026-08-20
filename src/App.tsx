@@ -8,6 +8,8 @@ import { RoundPanel } from './components/RoundPanel'
 import { StandingsTable } from './components/StandingsTable'
 import { TopScorersPage } from './components/TopScorersPage'
 import type { AppView } from './components/Header'
+import { Alert, AlertDescription } from './components/ui/alert'
+import { Button } from './components/ui/button'
 import { canManageTeams } from './domain/admin'
 import { useTournament } from './hooks/useTournament'
 import { auth, googleProvider } from './services/firebase'
@@ -41,9 +43,9 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <main className="loading-screen">
-        <RefreshCw className="spin" size={28} aria-hidden="true" />
-        <span>Carregando Firebase</span>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 text-brand-purple">
+        <RefreshCw className="animate-spin" size={28} aria-hidden="true" />
+        <span className="text-sm font-medium">Carregando Firebase</span>
       </main>
     )
   }
@@ -66,7 +68,7 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
   const [activeView, setActiveView] = useState<AppView>('dashboard')
 
   return (
-    <main className="app-shell">
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
       <Header
         user={user}
         isAdmin={isAdmin}
@@ -86,39 +88,45 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
         <TopScorersPage scorers={tournament.topScorers} />
       ) : (
         <>
-          <section className="summary-band">
+          <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-brand-purple bg-[linear-gradient(135deg,rgba(0,245,255,0.2),transparent_34%),linear-gradient(320deg,rgba(5,242,108,0.24),transparent_28%)] p-6 text-white shadow-lg">
             <div>
-              <p className="eyebrow">MVP Firebase</p>
-              <h2>Tabela compartilhada em tempo real</h2>
+              <p className="text-xs font-semibold tracking-widest text-white/70 uppercase">MVP Firebase</p>
+              <h2 className="text-xl font-bold">Tabela compartilhada em tempo real</h2>
             </div>
-            <button className="secondary-button" type="button" onClick={tournament.seedTournament}>
-              <Database size={18} aria-hidden="true" />
+            <Button variant="cyan" type="button" onClick={tournament.seedTournament}>
+              <Database aria-hidden="true" />
               {tournament.isSeeded ? 'Recarregar tabela base' : 'Criar tabela base'}
-            </button>
+            </Button>
           </section>
 
-          {tournament.error ? <p className="alert">{tournament.error}</p> : null}
+          {tournament.error ? (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{tournament.error}</AlertDescription>
+            </Alert>
+          ) : null}
+
           {tournament.loading ? (
-            <div className="loading-inline">
-              <RefreshCw className="spin" size={18} aria-hidden="true" />
+            <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="animate-spin" size={18} aria-hidden="true" />
               Sincronizando dados
             </div>
           ) : null}
 
           {!tournament.isSeeded ? (
-            <section className="seed-callout">
-              <Sparkles size={20} aria-hidden="true" />
-              <div>
-                <strong>Primeiro acesso</strong>
-                <span>Clique em "Criar tabela base" para gravar jogadores e partidas no Firestore.</span>
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-brand-lime/40 bg-success p-4 text-success-foreground">
+              <Sparkles size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <strong className="block font-semibold">Primeiro acesso</strong>
+                <span>Clique em &quot;Criar tabela base&quot; para gravar jogadores e partidas no Firestore.</span>
               </div>
-            </section>
+            </div>
           ) : null}
 
-          <div className="dashboard-grid">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
             <StandingsTable standings={tournament.standings} />
             <RoundPanel
               players={tournament.players}
+              matches={tournament.matches}
               roundMatches={tournament.roundMatches}
               byePlayer={tournament.byePlayer}
               selectedRound={tournament.selectedRound}

@@ -2,6 +2,13 @@ import { Download, ImagePlus, Save, ShieldCheck } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { Player } from '../domain/tournament'
 import type { SyncedTeamRoster } from '../services/apiFootball'
+import { Alert, AlertDescription } from './ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Card, CardContent, CardHeader } from './ui/card'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
 
 type AdminTeamsPanelProps = {
   players: Player[]
@@ -111,108 +118,137 @@ export function AdminTeamsPanel({ players, onSavePlayer, onUploadPhoto, onSyncTe
   }
 
   return (
-    <section className="panel admin-panel">
-      <div className="panel-heading split">
+    <section className="mt-6 flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="eyebrow">Admin</p>
-          <h2>Times e fotos</h2>
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Admin</p>
+          <h2 className="text-lg font-bold text-brand-purple">Times e fotos</h2>
         </div>
-        <span className="admin-badge">
-          <ShieldCheck size={16} aria-hidden="true" />
+        <Badge className="gap-1.5 bg-brand-lime text-brand-purple">
+          <ShieldCheck size={14} aria-hidden="true" />
           Acesso liberado
-        </span>
+        </Badge>
       </div>
 
-      {error ? <p className="field-error admin-feedback">{error}</p> : null}
-      {message ? <p className="success-message admin-feedback">{message}</p> : null}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+      {message ? (
+        <Alert variant="success">
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <div className="admin-team-list">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {drafts.map((draft) => (
-          <form className="admin-team-form" key={draft.id} onSubmit={(event) => handleSubmit(event, draft)}>
-            <div className="admin-preview">
-              <span className="photo-preview">
-                {draft.photoUrl ? <img src={draft.photoUrl} alt="" /> : draft.name.slice(0, 2).toUpperCase()}
-              </span>
-              <div>
-                <strong>{draft.name}</strong>
-                <span>{draft.teamName}</span>
-              </div>
-            </div>
-
-            <label>
-              <span>Jogador</span>
-              <input
-                aria-label={`Nome do jogador ${draft.initialName}`}
-                value={draft.name}
-                onChange={(event) => updateDraft(draft.id, { name: event.target.value })}
-              />
-            </label>
-
-            <label>
-              <span>Time</span>
-              <input
-                aria-label={`Time de ${draft.initialName}`}
-                value={draft.teamName}
-                onChange={(event) => updateDraft(draft.id, { teamName: event.target.value })}
-              />
-            </label>
-
-            <label>
-              <span>Escudo URL</span>
-              <input
-                aria-label={`Escudo de ${draft.initialName}`}
-                type="url"
-                value={draft.crestUrl}
-                onChange={(event) => updateDraft(draft.id, { crestUrl: event.target.value })}
-              />
-            </label>
-
-            <label>
-              <span>ID API-Futebol</span>
-              <input
-                aria-label={`ID API-Futebol de ${draft.initialName}`}
-                min="1"
-                type="number"
-                value={draft.apiFootballTeamId ?? ''}
-                onChange={(event) =>
-                  updateDraft(draft.id, {
-                    apiFootballTeamId: event.target.value ? Number(event.target.value) : undefined,
-                  })
-                }
-              />
-            </label>
-
-            <label className="file-control">
-              <span>Foto</span>
-              <input
-                accept="image/*"
-                aria-label={`Foto de ${draft.initialName}`}
-                type="file"
-                onChange={(event) => updateDraft(draft.id, { photoFile: event.target.files?.[0] ?? null })}
-              />
-              <span className="file-label">
-                <ImagePlus size={16} aria-hidden="true" />
-                {draft.photoFile?.name ?? 'Escolher foto'}
-              </span>
-            </label>
-
-            {onSyncTeamRoster ? (
-              <button
-                className="sync-button"
-                type="button"
-                disabled={syncingPlayerId === draft.id || savingPlayerId === draft.id}
-                onClick={() => handleSyncRoster(draft)}
+          <Card key={draft.id} className="gap-4 py-5">
+            <CardHeader>
+              <form
+                className="flex flex-col gap-3.5"
+                id={`admin-team-form-${draft.id}`}
+                onSubmit={(event) => handleSubmit(event, draft)}
               >
-                <Download size={16} aria-hidden="true" />
-                {syncingPlayerId === draft.id ? 'Buscando' : `Puxar dados ${draft.initialName}`}
-              </button>
-            ) : null}
+                <div className="flex items-center gap-3">
+                  <Avatar className="size-12 rounded-lg">
+                    <AvatarImage src={draft.photoUrl || undefined} alt="" />
+                    <AvatarFallback className="rounded-lg bg-muted text-sm font-bold text-brand-purple">
+                      {draft.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <strong className="block font-semibold text-foreground">{draft.name}</strong>
+                    <span className="text-sm text-muted-foreground">{draft.teamName}</span>
+                  </div>
+                </div>
 
-            <button className="save-button" type="submit" disabled={savingPlayerId === draft.id}>
-              <Save size={16} aria-hidden="true" />
-              {savingPlayerId === draft.id ? 'Salvando' : `Salvar ${draft.initialName}`}
-            </button>
-          </form>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Jogador</Label>
+                    <Input
+                      aria-label={`Nome do jogador ${draft.initialName}`}
+                      value={draft.name}
+                      onChange={(event) => updateDraft(draft.id, { name: event.target.value })}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Time</Label>
+                    <Input
+                      aria-label={`Time de ${draft.initialName}`}
+                      value={draft.teamName}
+                      onChange={(event) => updateDraft(draft.id, { teamName: event.target.value })}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Escudo URL</Label>
+                    <Input
+                      aria-label={`Escudo de ${draft.initialName}`}
+                      type="url"
+                      value={draft.crestUrl}
+                      onChange={(event) => updateDraft(draft.id, { crestUrl: event.target.value })}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label>ID API-Futebol</Label>
+                    <Input
+                      aria-label={`ID API-Futebol de ${draft.initialName}`}
+                      min="1"
+                      type="number"
+                      value={draft.apiFootballTeamId ?? ''}
+                      onChange={(event) =>
+                        updateDraft(draft.id, {
+                          apiFootballTeamId: event.target.value ? Number(event.target.value) : undefined,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Foto</Label>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-accent">
+                    <Input
+                      accept="image/*"
+                      aria-label={`Foto de ${draft.initialName}`}
+                      type="file"
+                      className="hidden"
+                      onChange={(event) => updateDraft(draft.id, { photoFile: event.target.files?.[0] ?? null })}
+                    />
+                    <ImagePlus size={16} aria-hidden="true" />
+                    {draft.photoFile?.name ?? 'Escolher foto'}
+                  </label>
+                </div>
+              </form>
+            </CardHeader>
+
+            <CardContent className="flex flex-col gap-2">
+              {onSyncTeamRoster ? (
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={syncingPlayerId === draft.id || savingPlayerId === draft.id}
+                  onClick={() => handleSyncRoster(draft)}
+                >
+                  <Download size={16} aria-hidden="true" />
+                  {syncingPlayerId === draft.id ? 'Buscando' : `Puxar dados ${draft.initialName}`}
+                </Button>
+              ) : null}
+
+              <Button
+                variant="cyan"
+                type="submit"
+                form={`admin-team-form-${draft.id}`}
+                disabled={savingPlayerId === draft.id}
+              >
+                <Save size={16} aria-hidden="true" />
+                {savingPlayerId === draft.id ? 'Salvando' : `Salvar ${draft.initialName}`}
+              </Button>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </section>
