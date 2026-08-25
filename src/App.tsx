@@ -3,6 +3,7 @@ import { Database, RefreshCw, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AdminTeamsPanel } from './components/AdminTeamsPanel'
 import { Header } from './components/Header'
+import { KnockoutBracketCard } from './components/KnockoutBracketCard'
 import { LoginScreen } from './components/LoginScreen'
 import { RoundPanel } from './components/RoundPanel'
 import { StandingsTable } from './components/StandingsTable'
@@ -86,6 +87,12 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
         />
       ) : activeView === 'scorers' ? (
         <TopScorersPage scorers={tournament.topScorers} />
+      ) : activeView === 'knockout' ? (
+        <KnockoutBracketCard
+          bracket={tournament.knockoutBracket}
+          savingMatchId={tournament.savingKnockoutMatchId}
+          onSaveScore={tournament.saveKnockoutScore}
+        />
       ) : (
         <>
           {tournament.error ? (

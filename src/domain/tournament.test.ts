@@ -5,12 +5,15 @@ import {
   defaultMatches,
   defaultPlayers,
   getCurrentRound,
+  getKnockoutBracket,
   getRoundBye,
   getRoundMatches,
   getRoundStatus,
   mergeMatchesWithDefaults,
   mergePlayersWithDefaults,
+  resolveKnockoutBracket,
   TOTAL_ROUNDS,
+  type KnockoutMatch,
   type Match,
 } from './tournament'
 
@@ -230,6 +233,87 @@ describe('getCurrentRound', () => {
     const matches = mergeMatchesWithDefaults(allFinished)
 
     expect(getCurrentRound(matches)).toBe(TOTAL_ROUNDS)
+  })
+})
+
+describe('getKnockoutBracket', () => {
+  it('gives the 1st place a bye and pairs 2nd x 5th and 3rd x 4th', () => {
+    const standings = calculateStandings(defaultPlayers, [])
+    const bracket = getKnockoutBracket(standings)
+
+    expect(bracket.bye).toEqual({ seed: 1, row: standings[0] })
+    expect(bracket.semifinals[0]).toEqual({
+      home: { seed: 2, row: standings[1] },
+      away: { seed: 5, row: standings[4] },
+    })
+    expect(bracket.semifinals[1]).toEqual({
+      home: { seed: 3, row: standings[2] },
+      away: { seed: 4, row: standings[3] },
+    })
+  })
+
+  it('leaves a seed without a row when the standings list is shorter than 5', () => {
+    const standings = calculateStandings(defaultPlayers, []).slice(0, 3)
+    const bracket = getKnockoutBracket(standings)
+
+    expect(bracket.semifinals[0].away.row).toBeUndefined()
+    expect(bracket.semifinals[1].away.row).toBeUndefined()
+  })
+})
+
+describe('resolveKnockoutBracket', () => {
+  // Sem partidas jogadas, a classificacao empata em pontos e desempata em
+  // ordem alfabetica: Capflint, Falcon, Leo, Manduca, NSB.
+  const standings = calculateStandings(defaultPlayers, [])
+
+  function knockoutMatch(id: KnockoutMatch['id'], homeGoals: number, awayGoals: number): KnockoutMatch {
+    return { id, homeGoals, awayGoals, played: true, scorers: [] }
+  }
+
+  it('lets both semifinals be played right away, but keeps the final and grand final locked', () => {
+    const bracket = resolveKnockoutBracket(standings, [])
+
+    expect(bracket.sf1.home.player?.name).toBe('Falcon')
+    expect(bracket.sf1.away.player?.name).toBe('NSB')
+    expect(bracket.sf2.home.player?.name).toBe('Leo')
+    expect(bracket.sf2.away.player?.name).toBe('Manduca')
+
+    expect(bracket.final.home.player).toBeUndefined()
+    expect(bracket.final.away.player).toBeUndefined()
+    expect(bracket.final.home.label).toBe('Vencedor SF1')
+    expect(bracket.final.away.label).toBe('Vencedor SF2')
+
+    // O 1o colocado (Capflint) ja aparece na grande final, esperando o vencedor da final.
+    expect(bracket.grandFinal.home.player?.name).toBe('Capflint')
+    expect(bracket.grandFinal.away.player).toBeUndefined()
+    expect(bracket.champion).toBeUndefined()
+  })
+
+  it('advances the semifinal winners into the final once both are played', () => {
+    const bracket = resolveKnockoutBracket(standings, [knockoutMatch('sf1', 2, 1), knockoutMatch('sf2', 0, 3)])
+
+    expect(bracket.final.home.player?.name).toBe('Falcon')
+    expect(bracket.final.away.player?.name).toBe('Manduca')
+  })
+
+  it('crowns a champion once the grand final is decided', () => {
+    const bracket = resolveKnockoutBracket(standings, [
+      knockoutMatch('sf1', 2, 1),
+      knockoutMatch('sf2', 0, 3),
+      knockoutMatch('final', 1, 4),
+      knockoutMatch('grandFinal', 2, 3),
+    ])
+
+    expect(bracket.grandFinal.home.player?.name).toBe('Capflint')
+    expect(bracket.grandFinal.away.player?.name).toBe('Manduca')
+    expect(bracket.champion?.name).toBe('Manduca')
+  })
+
+  it('does not advance a drawn score, since the mata-mata cannot end in a tie', () => {
+    const bracket = resolveKnockoutBracket(standings, [knockoutMatch('sf1', 1, 1), knockoutMatch('sf2', 0, 3)])
+
+    expect(bracket.final.home.player).toBeUndefined()
+    expect(bracket.final.away.player?.name).toBe('Manduca')
   })
 })
 

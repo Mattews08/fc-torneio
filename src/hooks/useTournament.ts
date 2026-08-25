@@ -9,14 +9,18 @@ import {
   mergeMatchesWithDefaults,
   mergePlayersWithDefaults,
   calculateTopScorers,
+  resolveKnockoutBracket,
+  type KnockoutMatch,
   type Match,
   type Player,
   type ScorerEntry,
 } from '../domain/tournament'
 import {
+  saveKnockoutMatchScore,
   saveMatchScore,
   savePlayerProfile,
   seedTournament,
+  subscribeKnockoutMatches,
   subscribeMatches,
   subscribePlayers,
   uploadPlayerPhoto,
@@ -26,10 +30,12 @@ import { fetchTeamRoster } from '../services/apiFootball'
 export function useTournament(userId: string | undefined) {
   const [players, setPlayers] = useState<Player[]>([])
   const [matches, setMatches] = useState<Match[]>([])
+  const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatch[]>([])
   const [selectedRound, setSelectedRound] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null)
+  const [savingKnockoutMatchId, setSavingKnockoutMatchId] = useState<string | null>(null)
   const hasAutoSelectedRound = useRef(false)
 
   useEffect(() => {
@@ -55,9 +61,19 @@ export function useTournament(userId: string | undefined) {
       },
     )
 
+    const unsubscribeKnockoutMatches = subscribeKnockoutMatches(
+      (nextKnockoutMatches) => {
+        setKnockoutMatches(nextKnockoutMatches)
+      },
+      (firebaseError) => {
+        setError(firebaseError.message)
+      },
+    )
+
     return () => {
       unsubscribePlayers()
       unsubscribeMatches()
+      unsubscribeKnockoutMatches()
     }
   }, [])
 
@@ -79,6 +95,10 @@ export function useTournament(userId: string | undefined) {
   const byePlayerId = useMemo(() => getRoundBye(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayer = activePlayers.find((player) => player.id === byePlayerId)
   const isSeeded = players.length >= defaultPlayers.length && matches.length >= defaultMatches.length
+  const knockoutBracket = useMemo(
+    () => resolveKnockoutBracket(standings, knockoutMatches),
+    [standings, knockoutMatches],
+  )
 
   async function handleSeed() {
     setError('')
@@ -105,6 +125,29 @@ export function useTournament(userId: string | undefined) {
       setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o placar.')
     } finally {
       setSavingMatchId(null)
+    }
+  }
+
+  async function handleSaveKnockoutScore(matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[]) {
+    if (!userId) {
+      setError('Entre com o Google antes de salvar resultados.')
+      return
+    }
+
+    if (homeGoals === awayGoals) {
+      setError('O mata-mata nao pode terminar empatado. Defina um vencedor.')
+      return
+    }
+
+    setSavingKnockoutMatchId(matchId)
+    setError('')
+
+    try {
+      await saveKnockoutMatchScore(matchId, homeGoals, awayGoals, scorers, userId)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o placar do mata-mata.')
+    } finally {
+      setSavingKnockoutMatchId(null)
     }
   }
 
@@ -135,8 +178,11 @@ export function useTournament(userId: string | undefined) {
     error,
     isSeeded,
     savingMatchId,
+    knockoutBracket,
+    savingKnockoutMatchId,
     seedTournament: handleSeed,
     saveScore: handleSaveScore,
+    saveKnockoutScore: handleSaveKnockoutScore,
     savePlayer: handleSavePlayer,
     uploadPlayerPhoto,
     syncTeamRoster: handleSyncTeamRoster,

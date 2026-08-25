@@ -9,7 +9,15 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { defaultMatches, defaultPlayers, type Match, type Player, type ScorerEntry } from '../domain/tournament'
+import {
+  defaultMatches,
+  defaultPlayers,
+  knockoutStages,
+  type KnockoutMatch,
+  type Match,
+  type Player,
+  type ScorerEntry,
+} from '../domain/tournament'
 import { db, storage } from './firebase'
 
 type DataCallback<T> = (data: T[]) => void
@@ -17,6 +25,7 @@ type ErrorCallback = (error: FirestoreError) => void
 
 const playersRef = collection(db, 'players')
 const matchesRef = collection(db, 'matches')
+const knockoutMatchesRef = collection(db, 'knockoutMatches')
 
 export function subscribePlayers(onData: DataCallback<Player>, onError: ErrorCallback): Unsubscribe {
   return onSnapshot(
@@ -80,6 +89,42 @@ export async function saveMatchScore(matchId: string, homeGoals: number, awayGoa
     updatedAt: serverTimestamp(),
     updatedBy: userId,
   }, { merge: true })
+}
+
+export function subscribeKnockoutMatches(onData: DataCallback<KnockoutMatch>, onError: ErrorCallback): Unsubscribe {
+  return onSnapshot(
+    knockoutMatchesRef,
+    (snapshot) => {
+      const matches = snapshot.docs
+        .map((item) => item.data() as KnockoutMatch)
+        .sort((a, b) => knockoutStages.indexOf(a.id) - knockoutStages.indexOf(b.id))
+
+      onData(matches)
+    },
+    onError,
+  )
+}
+
+export async function saveKnockoutMatchScore(
+  stageId: string,
+  homeGoals: number,
+  awayGoals: number,
+  scorers: ScorerEntry[],
+  userId: string,
+) {
+  await setDoc(
+    doc(knockoutMatchesRef, stageId),
+    {
+      id: stageId,
+      homeGoals,
+      awayGoals,
+      played: true,
+      scorers,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    },
+    { merge: true },
+  )
 }
 
 export async function savePlayerProfile(player: Player, userId: string) {

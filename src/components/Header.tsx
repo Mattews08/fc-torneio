@@ -1,11 +1,11 @@
 import type { User } from 'firebase/auth'
-import { BarChart3, LogOut, Shield, Trophy, UsersRound } from 'lucide-react'
+import { BarChart3, LogOut, Shield, Swords, Trophy, UsersRound } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Button } from './ui/button'
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 
-export type AppView = 'dashboard' | 'scorers' | 'admin'
+export type AppView = 'dashboard' | 'knockout' | 'scorers' | 'admin'
 
 type HeaderProps = {
   user: User
@@ -37,6 +37,10 @@ export function Header({ user, isAdmin = false, activeView = 'dashboard', onView
             <TabsTrigger value="dashboard">
               <Trophy size={16} aria-hidden="true" />
               <span className="hidden sm:inline">Tabela</span>
+            </TabsTrigger>
+            <TabsTrigger value="knockout">
+              <Swords size={16} aria-hidden="true" />
+              <span className="hidden sm:inline">Mata-mata</span>
             </TabsTrigger>
             <TabsTrigger value="scorers">
               <BarChart3 size={16} aria-hidden="true" />
