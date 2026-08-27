@@ -38,6 +38,17 @@ export type Match = {
   scorers?: ScorerEntry[]
 }
 
+// Formato minimo que uma partida precisa ter pra contar gols na artilharia —
+// tanto as partidas da fase de liga (Match) quanto as do mata-mata
+// (KnockoutMatch) atendem esse formato.
+export type ScorableMatch = {
+  id: string
+  played: boolean
+  homeGoals: number | null
+  awayGoals: number | null
+  scorers?: ScorerEntry[]
+}
+
 export type StandingRow = {
   playerId: string
   player: Player
@@ -391,7 +402,7 @@ export function calculateStandings(players: Player[], matches: Match[]): Standin
   })
 }
 
-export function calculateTopScorers(players: Player[], matches: Match[]): TopScorerRow[] {
+export function calculateTopScorers(players: Player[], matches: ScorableMatch[]): TopScorerRow[] {
   const playerById = new Map(players.map((player) => [player.id, player]))
   const rows = new Map<string, TopScorerRow & { matchIds: Set<string> }>()
 
@@ -473,7 +484,7 @@ function replaceLegacyPlaceholderTeamName(player: Player): Player {
   return player
 }
 
-function isCompletedMatch(match: Match): match is Match & { homeGoals: number; awayGoals: number } {
+function isCompletedMatch<T extends ScorableMatch>(match: T): match is T & { homeGoals: number; awayGoals: number } {
   return (
     match.played &&
     typeof match.homeGoals === 'number' &&

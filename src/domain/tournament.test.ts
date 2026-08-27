@@ -374,4 +374,38 @@ describe('calculateTopScorers', () => {
       },
     ])
   })
+
+  it('also counts goals scored in knockout-stage matches, on top of the league phase', () => {
+    const leagueMatches: Match[] = [
+      {
+        ...defaultMatches[0],
+        homeGoals: 3,
+        awayGoals: 1,
+        played: true,
+        scorers: [{ id: 's1', name: 'Haaland', teamPlayerId: 'manduca', goals: 2 }],
+      },
+    ]
+    const knockoutMatches: KnockoutMatch[] = [
+      {
+        id: 'sf1',
+        homeGoals: 2,
+        awayGoals: 1,
+        played: true,
+        scorers: [{ id: 's2', name: 'Haaland', teamPlayerId: 'manduca', goals: 1 }],
+      },
+    ]
+
+    const topScorers = calculateTopScorers(defaultPlayers, [...leagueMatches, ...knockoutMatches])
+
+    expect(topScorers).toEqual([
+      {
+        key: 'manduca:haaland',
+        name: 'Haaland',
+        teamPlayerId: 'manduca',
+        teamName: 'Manduca',
+        goals: 3,
+        matches: 2,
+      },
+    ])
+  })
 })

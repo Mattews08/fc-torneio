@@ -6,6 +6,7 @@ import {
   getCurrentRound,
   getRoundBye,
   getRoundMatches,
+  mergeKnockoutMatchesWithDefaults,
   mergeMatchesWithDefaults,
   mergePlayersWithDefaults,
   calculateTopScorers,
@@ -79,6 +80,7 @@ export function useTournament(userId: string | undefined) {
 
   const activePlayers = useMemo(() => mergePlayersWithDefaults(players), [players])
   const activeMatches = useMemo(() => mergeMatchesWithDefaults(matches), [matches])
+  const activeKnockoutMatches = useMemo(() => mergeKnockoutMatchesWithDefaults(knockoutMatches), [knockoutMatches])
 
   useEffect(() => {
     if (loading || hasAutoSelectedRound.current) {
@@ -90,7 +92,12 @@ export function useTournament(userId: string | undefined) {
   }, [loading, activeMatches])
 
   const standings = useMemo(() => calculateStandings(activePlayers, activeMatches), [activePlayers, activeMatches])
-  const topScorers = useMemo(() => calculateTopScorers(activePlayers, activeMatches), [activePlayers, activeMatches])
+  const topScorers = useMemo(
+    // Gols do mata-mata tambem contam na artilharia, entao juntamos as partidas
+    // da fase de liga com as do mata-mata antes de somar os artilheiros.
+    () => calculateTopScorers(activePlayers, [...activeMatches, ...activeKnockoutMatches]),
+    [activePlayers, activeMatches, activeKnockoutMatches],
+  )
   const roundMatches = useMemo(() => getRoundMatches(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayerId = useMemo(() => getRoundBye(activeMatches, selectedRound), [activeMatches, selectedRound])
   const byePlayer = activePlayers.find((player) => player.id === byePlayerId)
