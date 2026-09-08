@@ -1,34 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   calculateStandings,
-  defaultMatches,
-  defaultPlayers,
+  calculateTopScorers,
   getCurrentRound,
   getRoundBye,
   getRoundMatches,
   mergeKnockoutMatchesWithDefaults,
-  mergeMatchesWithDefaults,
-  mergePlayersWithDefaults,
-  calculateTopScorers,
   resolveKnockoutBracket,
   type KnockoutMatch,
   type Match,
   type Player,
   type ScorerEntry,
+  type Season,
 } from '../domain/tournament'
 import {
-  saveKnockoutMatchScore,
-  saveMatchScore,
-  savePlayerProfile,
-  seedTournament,
-  subscribeKnockoutMatches,
-  subscribeMatches,
-  subscribePlayers,
-  uploadPlayerPhoto,
+  saveSeasonKnockoutMatchScore,
+  saveSeasonMatchScore,
+  saveSeasonPlayerProfile,
+  subscribeSeasonKnockoutMatches,
+  subscribeSeasonMatches,
+  subscribeSeasonPlayers,
+  uploadSeasonPlayerPhoto,
 } from '../services/tournamentRepository'
 import { fetchTeamRoster } from '../services/apiFootball'
 
-export function useTournament(userId: string | undefined) {
+export function useTournament(userId: string | undefined, season: Season | undefined) {
+  const seasonId = season?.id
+  const totalRounds = season?.rounds ?? 1
+
   const [players, setPlayers] = useState<Player[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [knockoutMatches, setKnockoutMatches] = useState<KnockoutMatch[]>([])
@@ -37,10 +36,21 @@ export function useTournament(userId: string | undefined) {
   const [error, setError] = useState('')
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null)
   const [savingKnockoutMatchId, setSavingKnockoutMatchId] = useState<string | null>(null)
-  const hasAutoSelectedRound = useRef(false)
+  const hasAutoSelectedRound = useRef<string | undefined>(undefined)
 
   useEffect(() => {
-    const unsubscribePlayers = subscribePlayers(
+    if (!seasonId) {
+      setPlayers([])
+      setMatches([])
+      setKnockoutMatches([])
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+
+    const unsubscribePlayers = subscribeSeasonPlayers(
+      seasonId,
       (nextPlayers) => {
         setPlayers(nextPlayers)
         setLoading(false)
@@ -51,7 +61,8 @@ export function useTournament(userId: string | undefined) {
       },
     )
 
-    const unsubscribeMatches = subscribeMatches(
+    const unsubscribeMatches = subscribeSeasonMatches(
+      seasonId,
       (nextMatches) => {
         setMatches(nextMatches)
         setLoading(false)
@@ -62,7 +73,8 @@ export function useTournament(userId: string | undefined) {
       },
     )
 
-    const unsubscribeKnockoutMatches = subscribeKnockoutMatches(
+    const unsubscribeKnockoutMatches = subscribeSeasonKnockoutMatches(
+      seasonId,
       (nextKnockoutMatches) => {
         setKnockoutMatches(nextKnockoutMatches)
       },
@@ -76,46 +88,32 @@ export function useTournament(userId: string | undefined) {
       unsubscribeMatches()
       unsubscribeKnockoutMatches()
     }
-  }, [])
-
-  const activePlayers = useMemo(() => mergePlayersWithDefaults(players), [players])
-  const activeMatches = useMemo(() => mergeMatchesWithDefaults(matches), [matches])
-  const activeKnockoutMatches = useMemo(() => mergeKnockoutMatchesWithDefaults(knockoutMatches), [knockoutMatches])
+  }, [seasonId])
 
   useEffect(() => {
-    if (loading || hasAutoSelectedRound.current) {
+    if (loading || matches.length === 0 || hasAutoSelectedRound.current === seasonId) {
       return
     }
 
-    hasAutoSelectedRound.current = true
-    setSelectedRound(getCurrentRound(activeMatches))
-  }, [loading, activeMatches])
+    hasAutoSelectedRound.current = seasonId
+    setSelectedRound(getCurrentRound(matches, totalRounds))
+  }, [loading, matches, seasonId, totalRounds])
 
-  const standings = useMemo(() => calculateStandings(activePlayers, activeMatches), [activePlayers, activeMatches])
+  const standings = useMemo(() => calculateStandings(players, matches), [players, matches])
+  const activeKnockoutMatches = useMemo(() => mergeKnockoutMatchesWithDefaults(knockoutMatches), [knockoutMatches])
   const topScorers = useMemo(
     // Gols do mata-mata tambem contam na artilharia, entao juntamos as partidas
     // da fase de liga com as do mata-mata antes de somar os artilheiros.
-    () => calculateTopScorers(activePlayers, [...activeMatches, ...activeKnockoutMatches]),
-    [activePlayers, activeMatches, activeKnockoutMatches],
+    () => calculateTopScorers(players, [...matches, ...activeKnockoutMatches]),
+    [players, matches, activeKnockoutMatches],
   )
-  const roundMatches = useMemo(() => getRoundMatches(activeMatches, selectedRound), [activeMatches, selectedRound])
-  const byePlayerId = useMemo(() => getRoundBye(activeMatches, selectedRound), [activeMatches, selectedRound])
-  const byePlayer = activePlayers.find((player) => player.id === byePlayerId)
-  const isSeeded = players.length >= defaultPlayers.length && matches.length >= defaultMatches.length
+  const roundMatches = useMemo(() => getRoundMatches(matches, selectedRound), [matches, selectedRound])
+  const byePlayerId = useMemo(() => getRoundBye(matches, selectedRound), [matches, selectedRound])
+  const byePlayer = players.find((player) => player.id === byePlayerId)
   const knockoutBracket = useMemo(
     () => resolveKnockoutBracket(standings, knockoutMatches),
     [standings, knockoutMatches],
   )
-
-  async function handleSeed() {
-    setError('')
-
-    try {
-      await seedTournament()
-    } catch (seedError) {
-      setError(seedError instanceof Error ? seedError.message : 'Nao foi possivel criar a tabela base.')
-    }
-  }
 
   async function handleSaveScore(matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[]) {
     if (!userId) {
@@ -123,11 +121,16 @@ export function useTournament(userId: string | undefined) {
       return
     }
 
+    if (!seasonId) {
+      setError('Nenhuma temporada selecionada.')
+      return
+    }
+
     setSavingMatchId(matchId)
     setError('')
 
     try {
-      await saveMatchScore(matchId, homeGoals, awayGoals, scorers, userId)
+      await saveSeasonMatchScore(seasonId, matchId, homeGoals, awayGoals, scorers, userId)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o placar.')
     } finally {
@@ -141,6 +144,11 @@ export function useTournament(userId: string | undefined) {
       return
     }
 
+    if (!seasonId) {
+      setError('Nenhuma temporada selecionada.')
+      return
+    }
+
     if (homeGoals === awayGoals) {
       setError('O mata-mata nao pode terminar empatado. Defina um vencedor.')
       return
@@ -150,7 +158,7 @@ export function useTournament(userId: string | undefined) {
     setError('')
 
     try {
-      await saveKnockoutMatchScore(matchId, homeGoals, awayGoals, scorers, userId)
+      await saveSeasonKnockoutMatchScore(seasonId, matchId, homeGoals, awayGoals, scorers, userId)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar o placar do mata-mata.')
     } finally {
@@ -164,8 +172,21 @@ export function useTournament(userId: string | undefined) {
       return
     }
 
+    if (!seasonId) {
+      setError('Nenhuma temporada selecionada.')
+      return
+    }
+
     setError('')
-    await savePlayerProfile(player, userId)
+    await saveSeasonPlayerProfile(seasonId, player, userId)
+  }
+
+  async function handleUploadPhoto(playerId: string, file: File) {
+    if (!seasonId) {
+      throw new Error('Nenhuma temporada selecionada.')
+    }
+
+    return uploadSeasonPlayerPhoto(seasonId, playerId, file)
   }
 
   async function handleSyncTeamRoster(teamName: string, teamId?: number) {
@@ -173,25 +194,24 @@ export function useTournament(userId: string | undefined) {
   }
 
   return {
-    players: activePlayers,
+    players,
     standings,
     topScorers,
-    matches: activeMatches,
+    matches,
     roundMatches,
     byePlayer,
     selectedRound,
     setSelectedRound,
+    totalRounds,
     loading,
     error,
-    isSeeded,
     savingMatchId,
     knockoutBracket,
     savingKnockoutMatchId,
-    seedTournament: handleSeed,
     saveScore: handleSaveScore,
     saveKnockoutScore: handleSaveKnockoutScore,
     savePlayer: handleSavePlayer,
-    uploadPlayerPhoto,
+    uploadPlayerPhoto: handleUploadPhoto,
     syncTeamRoster: handleSyncTeamRoster,
   }
 }

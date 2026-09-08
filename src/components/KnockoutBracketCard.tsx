@@ -23,36 +23,40 @@ export function KnockoutBracketCard({ bracket, savingMatchId, onSaveScore }: Kno
 
       <CardContent className="overflow-x-auto">
         <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-stretch lg:justify-between lg:gap-0">
-          <div className="flex flex-col items-center gap-3 lg:justify-around lg:gap-6">
+          <div className="flex flex-col items-center gap-3 lg:justify-center">
             <p className="text-[11px] font-semibold tracking-widest text-muted-foreground/80 uppercase lg:hidden">
-              Semifinais
+              Quartas de final
             </p>
-            <KnockoutMatchSlot resolved={bracket.sf1} savingMatchId={savingMatchId} onSaveScore={onSaveScore} />
-            <KnockoutMatchSlot resolved={bracket.sf2} savingMatchId={savingMatchId} onSaveScore={onSaveScore} />
+            <KnockoutMatchSlot resolved={bracket.quarterfinal} savingMatchId={savingMatchId} onSaveScore={onSaveScore} />
           </div>
 
-          <KnockoutConnector variant="merge" />
-
-          <div className="flex flex-col items-center gap-3 lg:justify-center">
-            <p className="text-[11px] font-semibold tracking-widest text-muted-foreground/80 uppercase lg:hidden">Final</p>
-            <KnockoutMatchSlot resolved={bracket.final} savingMatchId={savingMatchId} onSaveScore={onSaveScore} />
-          </div>
-
-          <KnockoutConnector variant="line" />
+          <KnockoutConnector />
 
           <div className="flex flex-col items-center gap-3 lg:justify-center">
             <p className="text-[11px] font-semibold tracking-widest text-muted-foreground/80 uppercase lg:hidden">
-              Grande final
+              Semifinal
             </p>
             <KnockoutMatchSlot
-              resolved={bracket.grandFinal}
+              resolved={bracket.semifinal}
               savingMatchId={savingMatchId}
               onSaveScore={onSaveScore}
               homeBadge="Direto"
             />
           </div>
 
-          <KnockoutConnector variant="line" />
+          <KnockoutConnector />
+
+          <div className="flex flex-col items-center gap-3 lg:justify-center">
+            <p className="text-[11px] font-semibold tracking-widest text-muted-foreground/80 uppercase lg:hidden">Final</p>
+            <KnockoutMatchSlot
+              resolved={bracket.final}
+              savingMatchId={savingMatchId}
+              onSaveScore={onSaveScore}
+              homeBadge="Direto"
+            />
+          </div>
+
+          <KnockoutConnector />
 
           <div className="flex flex-col items-center gap-3 lg:justify-center">
             <p className="text-[11px] font-semibold tracking-widest text-muted-foreground/80 uppercase lg:hidden">
@@ -67,29 +71,17 @@ export function KnockoutBracketCard({ bracket, savingMatchId, onSaveScore }: Kno
 }
 
 // Conector decorativo entre fases (nao tem conteudo interativo, por isso pode
-// ter uma versao para celular — seta — e outra para telas largas — linha de
-// chave — alternadas via CSS, sem duplicar formularios de verdade.
-function KnockoutConnector({ variant }: { variant: 'merge' | 'line' }) {
+// ter uma versao para celular — seta — e outra para telas largas — linha —
+// alternadas via CSS, sem duplicar formularios de verdade. O mata-mata agora
+// e uma corrente linear (quartas -> semifinal -> final -> campeao), entao so
+// existe um tipo de conector.
+function KnockoutConnector() {
   return (
     <>
       <ChevronDown size={18} className="shrink-0 text-muted-foreground/40 lg:hidden" aria-hidden="true" />
-      {variant === 'merge' ? (
-        <div className="hidden w-10 shrink-0 text-border lg:flex" aria-hidden="true">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
-            <path
-              d="M0,25 H50 V50 M0,75 H50 V50 M50,50 H100"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
-        </div>
-      ) : (
-        <div className="hidden w-10 shrink-0 items-center lg:flex" aria-hidden="true">
-          <div className="h-0.5 w-full bg-border" />
-        </div>
-      )}
+      <div className="hidden w-10 shrink-0 items-center lg:flex" aria-hidden="true">
+        <div className="h-0.5 w-full bg-border" />
+      </div>
     </>
   )
 }

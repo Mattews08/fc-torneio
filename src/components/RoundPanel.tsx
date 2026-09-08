@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Moon } from 'lucide-react'
-import { TOTAL_ROUNDS, getRoundStatus, type Match, type Player, type RoundStatus, type ScorerEntry } from '../domain/tournament'
+import { getRoundStatus, type Match, type Player, type RoundStatus, type ScorerEntry } from '../domain/tournament'
 import { cn } from '../lib/utils'
 import { MatchEditor } from './MatchEditor'
 import { Badge } from './ui/badge'
@@ -13,6 +13,7 @@ type RoundPanelProps = {
   roundMatches: Match[]
   byePlayer: Player | undefined
   selectedRound: number
+  totalRounds: number
   savingMatchId: string | null
   onRoundChange: (round: number) => void
   onSaveScore: (matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[]) => Promise<void>
@@ -42,6 +43,7 @@ export function RoundPanel({
   roundMatches,
   byePlayer,
   selectedRound,
+  totalRounds,
   savingMatchId,
   onRoundChange,
   onSaveScore,
@@ -79,7 +81,7 @@ export function RoundPanel({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: TOTAL_ROUNDS }, (_, index) => index + 1).map((round) => {
+              {Array.from({ length: totalRounds }, (_, index) => index + 1).map((round) => {
                 const roundStatus = getRoundStatus(matches, round)
                 const statusMeta = ROUND_STATUS_META[roundStatus]
 
@@ -98,7 +100,7 @@ export function RoundPanel({
             variant="outline"
             size="icon"
             type="button"
-            onClick={() => onRoundChange(Math.min(TOTAL_ROUNDS, selectedRound + 1))}
+            onClick={() => onRoundChange(Math.min(totalRounds, selectedRound + 1))}
             title="Proxima rodada"
             aria-label="Proxima rodada"
           >
@@ -111,7 +113,7 @@ export function RoundPanel({
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <CalendarDays size={16} aria-hidden="true" />
-            {selectedRound <= TOTAL_ROUNDS / 2 ? 'Turno' : 'Returno'}
+            {selectedRound <= totalRounds / 2 ? 'Turno' : 'Returno'}
           </span>
           <span className="flex items-center gap-1.5">
             <Moon size={16} aria-hidden="true" />

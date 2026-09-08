@@ -159,6 +159,17 @@ export const defaultMatches: Match[] = [
 
 export const TOTAL_ROUNDS = Math.max(...defaultMatches.map((match) => match.round))
 
+// Uma temporada agrupa seu proprio elenco de jogadores, partidas e mata-mata
+// (guardados em subcolecoes separadas no Firestore). "Temporada 1" e a
+// temporada atual migrada, criada automaticamente a partir dos dados que ja
+// existiam antes desse recurso.
+export type Season = {
+  id: string
+  name: string
+  rounds: number
+  status: 'active' | 'archived'
+}
+
 export type RoundStatus = 'not_started' | 'in_progress' | 'finished'
 
 export function getRoundMatches(matches: Match[], round: number): Match[] {
@@ -191,14 +202,67 @@ export function getRoundStatus(matches: Match[], round: number): RoundStatus {
 
 // Retorna a primeira rodada que ainda nao foi finalizada (em andamento ou prestes
 // a comecar), para o painel abrir direto nela em vez de sempre cair na Rodada 1.
-export function getCurrentRound(matches: Match[]): number {
-  for (let round = 1; round <= TOTAL_ROUNDS; round += 1) {
+export function getCurrentRound(matches: Match[], totalRounds: number): number {
+  for (let round = 1; round <= totalRounds; round += 1) {
     if (getRoundStatus(matches, round) !== 'finished') {
       return round
     }
   }
 
-  return TOTAL_ROUNDS
+  return totalRounds
+}
+
+function shuffle<T>(items: T[], randomFn: () => number): T[] {
+  const result = [...items]
+
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(randomFn() * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
+  }
+
+  return result
+}
+
+// Sorteia os confrontos de uma temporada: cada rodada embaralha o elenco
+// inteiro e forma os pares na sequencia (sobra 1 pessoa de folga quando o
+// numero de jogadores e impar). Cada rodada e sorteada de forma independente
+// das outras, entao duas pessoas podem se enfrentar mais de uma vez (ou nenhuma)
+// ao longo da temporada — e proposital, nao e um turno/returno garantido.
+export function drawSeasonMatches(playerIds: string[], rounds: number, randomFn: () => number = Math.random): Match[] {
+  if (playerIds.length < 2 || rounds < 1) {
+    return []
+  }
+
+  const matches: Match[] = []
+
+  for (let round = 1; round <= rounds; round += 1) {
+    const shuffled = shuffle(playerIds, randomFn)
+    let byePlayerId = ''
+
+    if (shuffled.length % 2 === 1) {
+      byePlayerId = shuffled.shift() ?? ''
+    }
+
+    for (let index = 0; index < shuffled.length; index += 2) {
+      const homePlayerId = shuffled[index]
+      const awayPlayerId = shuffled[index + 1]
+
+      matches.push({
+        id: `r${round}-m${index / 2 + 1}-${homePlayerId}-${awayPlayerId}`,
+        round,
+        leg: round <= Math.ceil(rounds / 2) ? 'turno' : 'returno',
+        homePlayerId,
+        awayPlayerId,
+        byePlayerId,
+        homeGoals: null,
+        awayGoals: null,
+        played: false,
+        scorers: [],
+      })
+    }
+  }
+
+  return matches
 }
 
 export type KnockoutSeed = {
@@ -212,26 +276,25 @@ export type KnockoutPairing = {
 }
 
 export type KnockoutBracket = {
-  bye: KnockoutSeed
-  semifinals: [KnockoutPairing, KnockoutPairing]
+  finalBye: KnockoutSeed
+  semifinalBye: KnockoutSeed
+  quarterfinal: KnockoutPairing
 }
 
 // Formato do mata-mata: o 1o colocado da fase de pontos corridos folga direto
-// para a grande final, enquanto 2o x 5o e 3o x 4o decidem quem enfrenta o
-// lider na decisao.
+// para a final, o 2o folga direto para a semifinal, 3o x 4o decidem quem
+// encara o 2o, e o 5o e eliminado (nao joga o mata-mata).
 export function getKnockoutBracket(standings: StandingRow[]): KnockoutBracket {
   const seed = (position: number): KnockoutSeed => ({ seed: position, row: standings[position - 1] })
 
   return {
-    bye: seed(1),
-    semifinals: [
-      { home: seed(2), away: seed(5) },
-      { home: seed(3), away: seed(4) },
-    ],
+    finalBye: seed(1),
+    semifinalBye: seed(2),
+    quarterfinal: { home: seed(3), away: seed(4) },
   }
 }
 
-export type KnockoutStage = 'sf1' | 'sf2' | 'final' | 'grandFinal'
+export type KnockoutStage = 'quarterfinal' | 'semifinal' | 'final'
 
 export type KnockoutMatch = {
   id: KnockoutStage
@@ -241,7 +304,7 @@ export type KnockoutMatch = {
   scorers?: ScorerEntry[]
 }
 
-export const knockoutStages: KnockoutStage[] = ['sf1', 'sf2', 'final', 'grandFinal']
+export const knockoutStages: KnockoutStage[] = ['quarterfinal', 'semifinal', 'final']
 
 export const defaultKnockoutMatches: KnockoutMatch[] = knockoutStages.map((id) => ({
   id,
@@ -270,10 +333,9 @@ export type ResolvedKnockoutMatch = {
 }
 
 export type ResolvedKnockoutBracket = {
-  sf1: ResolvedKnockoutMatch
-  sf2: ResolvedKnockoutMatch
+  quarterfinal: ResolvedKnockoutMatch
+  semifinal: ResolvedKnockoutMatch
   final: ResolvedKnockoutMatch
-  grandFinal: ResolvedKnockoutMatch
   champion: Player | undefined
 }
 
@@ -290,57 +352,48 @@ function getKnockoutMatchWinner(match: KnockoutMatch, home: Player | undefined, 
 }
 
 // Junta o chaveamento (baseado na classificacao) com os placares ja salvos do
-// mata-mata, propagando o vencedor de cada fase para a proxima.
+// mata-mata, propagando o vencedor de cada fase para a proxima. O 5o colocado
+// nao entra em nenhuma fase: fica eliminado direto pela classificacao.
 export function resolveKnockoutBracket(standings: StandingRow[], knockoutMatches: KnockoutMatch[]): ResolvedKnockoutBracket {
   const bracket = getKnockoutBracket(standings)
   const matchById = new Map(mergeKnockoutMatchesWithDefaults(knockoutMatches).map((match) => [match.id, match]))
   const getMatch = (stage: KnockoutStage) => matchById.get(stage) ?? { id: stage, homeGoals: null, awayGoals: null, played: false, scorers: [] }
 
-  const sf1Match = getMatch('sf1')
-  const sf2Match = getMatch('sf2')
+  const quarterfinalMatch = getMatch('quarterfinal')
+  const semifinalMatch = getMatch('semifinal')
   const finalMatch = getMatch('final')
-  const grandFinalMatch = getMatch('grandFinal')
 
-  const sf1: ResolvedKnockoutMatch = {
-    stage: 'sf1',
-    home: { seed: bracket.semifinals[0].home.seed, player: bracket.semifinals[0].home.row?.player },
-    away: { seed: bracket.semifinals[0].away.seed, player: bracket.semifinals[0].away.row?.player },
-    match: sf1Match,
-    canPlay: Boolean(bracket.semifinals[0].home.row && bracket.semifinals[0].away.row),
+  const quarterfinal: ResolvedKnockoutMatch = {
+    stage: 'quarterfinal',
+    home: { seed: bracket.quarterfinal.home.seed, player: bracket.quarterfinal.home.row?.player },
+    away: { seed: bracket.quarterfinal.away.seed, player: bracket.quarterfinal.away.row?.player },
+    match: quarterfinalMatch,
+    canPlay: Boolean(bracket.quarterfinal.home.row && bracket.quarterfinal.away.row),
   }
 
-  const sf2: ResolvedKnockoutMatch = {
-    stage: 'sf2',
-    home: { seed: bracket.semifinals[1].home.seed, player: bracket.semifinals[1].home.row?.player },
-    away: { seed: bracket.semifinals[1].away.seed, player: bracket.semifinals[1].away.row?.player },
-    match: sf2Match,
-    canPlay: Boolean(bracket.semifinals[1].home.row && bracket.semifinals[1].away.row),
+  const quarterfinalWinner = getKnockoutMatchWinner(quarterfinalMatch, quarterfinal.home.player, quarterfinal.away.player)
+
+  const semifinal: ResolvedKnockoutMatch = {
+    stage: 'semifinal',
+    home: { seed: bracket.semifinalBye.seed, player: bracket.semifinalBye.row?.player },
+    away: { player: quarterfinalWinner, label: 'Vencedor 3º x 4º' },
+    match: semifinalMatch,
+    canPlay: Boolean(bracket.semifinalBye.row && quarterfinalWinner),
   }
 
-  const sf1Winner = getKnockoutMatchWinner(sf1Match, sf1.home.player, sf1.away.player)
-  const sf2Winner = getKnockoutMatchWinner(sf2Match, sf2.home.player, sf2.away.player)
+  const semifinalWinner = getKnockoutMatchWinner(semifinalMatch, semifinal.home.player, semifinal.away.player)
 
   const final: ResolvedKnockoutMatch = {
     stage: 'final',
-    home: { player: sf1Winner, label: 'Vencedor SF1' },
-    away: { player: sf2Winner, label: 'Vencedor SF2' },
+    home: { seed: bracket.finalBye.seed, player: bracket.finalBye.row?.player },
+    away: { player: semifinalWinner, label: 'Vencedor da semifinal' },
     match: finalMatch,
-    canPlay: Boolean(sf1Winner && sf2Winner),
+    canPlay: Boolean(bracket.finalBye.row && semifinalWinner),
   }
 
-  const finalWinner = getKnockoutMatchWinner(finalMatch, final.home.player, final.away.player)
+  const champion = getKnockoutMatchWinner(finalMatch, final.home.player, final.away.player)
 
-  const grandFinal: ResolvedKnockoutMatch = {
-    stage: 'grandFinal',
-    home: { seed: bracket.bye.seed, player: bracket.bye.row?.player },
-    away: { player: finalWinner, label: 'Vencedor da final' },
-    match: grandFinalMatch,
-    canPlay: Boolean(bracket.bye.row && finalWinner),
-  }
-
-  const champion = getKnockoutMatchWinner(grandFinalMatch, grandFinal.home.player, grandFinal.away.player)
-
-  return { sf1, sf2, final, grandFinal, champion }
+  return { quarterfinal, semifinal, final, champion }
 }
 
 export function mergePlayersWithDefaults(firestorePlayers: Player[]): Player[] {

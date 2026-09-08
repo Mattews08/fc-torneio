@@ -1,53 +1,81 @@
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
   setDoc,
   writeBatch,
+  type CollectionReference,
   type FirestoreError,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import {
-  defaultMatches,
-  defaultPlayers,
+  drawSeasonMatches,
   knockoutStages,
+  mergeMatchesWithDefaults,
+  mergePlayersWithDefaults,
+  TOTAL_ROUNDS,
   type KnockoutMatch,
   type Match,
   type Player,
   type ScorerEntry,
+  type Season,
 } from '../domain/tournament'
 import { db, storage } from './firebase'
 
 type DataCallback<T> = (data: T[]) => void
 type ErrorCallback = (error: FirestoreError) => void
 
-const playersRef = collection(db, 'players')
-const matchesRef = collection(db, 'matches')
-const knockoutMatchesRef = collection(db, 'knockoutMatches')
+// Colecoes "legadas" (na raiz do Firestore) que existiam antes das temporadas.
+// So sao lidas pela migracao unica que transforma esses dados na "Temporada 1".
+const legacyPlayersRef = collection(db, 'players')
+const legacyMatchesRef = collection(db, 'matches')
+const legacyKnockoutMatchesRef = collection(db, 'knockoutMatches')
 
-export function subscribePlayers(onData: DataCallback<Player>, onError: ErrorCallback): Unsubscribe {
+const seasonsRef = collection(db, 'seasons')
+const LEGACY_SEASON_ID = 'season-1'
+
+function seasonPlayersRef(seasonId: string): CollectionReference {
+  return collection(db, 'seasons', seasonId, 'players')
+}
+
+function seasonMatchesRef(seasonId: string): CollectionReference {
+  return collection(db, 'seasons', seasonId, 'matches')
+}
+
+function seasonKnockoutMatchesRef(seasonId: string): CollectionReference {
+  return collection(db, 'seasons', seasonId, 'knockoutMatches')
+}
+
+export function subscribeSeasons(onData: DataCallback<Season>, onError: ErrorCallback): Unsubscribe {
   return onSnapshot(
-    playersRef,
+    seasonsRef,
     (snapshot) => {
-      const players = snapshot.docs
-        .map((item) => item.data() as Player)
-        .sort((a, b) => getPlayerOrder(a.id) - getPlayerOrder(b.id))
-
-      onData(players)
+      onData(snapshot.docs.map((item) => item.data() as Season))
     },
     onError,
   )
 }
 
-export function subscribeMatches(onData: DataCallback<Match>, onError: ErrorCallback): Unsubscribe {
+export function subscribeSeasonPlayers(seasonId: string, onData: DataCallback<Player>, onError: ErrorCallback): Unsubscribe {
   return onSnapshot(
-    matchesRef,
+    seasonPlayersRef(seasonId),
+    (snapshot) => {
+      onData(snapshot.docs.map((item) => item.data() as Player))
+    },
+    onError,
+  )
+}
+
+export function subscribeSeasonMatches(seasonId: string, onData: DataCallback<Match>, onError: ErrorCallback): Unsubscribe {
+  return onSnapshot(
+    seasonMatchesRef(seasonId),
     (snapshot) => {
       const matches = snapshot.docs
         .map((item) => item.data() as Match)
-        .sort((a, b) => a.round - b.round || getMatchOrder(a.id) - getMatchOrder(b.id))
+        .sort((a, b) => a.round - b.round || a.id.localeCompare(b.id))
 
       onData(matches)
     },
@@ -55,45 +83,13 @@ export function subscribeMatches(onData: DataCallback<Match>, onError: ErrorCall
   )
 }
 
-export async function seedTournament() {
-  const batch = writeBatch(db)
-
-  for (const player of defaultPlayers) {
-    batch.set(doc(playersRef, player.id), player)
-  }
-
-  for (const match of defaultMatches) {
-    batch.set(doc(matchesRef, match.id), {
-      ...match,
-      updatedAt: serverTimestamp(),
-      updatedBy: 'seed',
-    })
-  }
-
-  await batch.commit()
-}
-
-export async function saveMatchScore(matchId: string, homeGoals: number, awayGoals: number, scorers: ScorerEntry[], userId: string) {
-  const defaultMatch = defaultMatches.find((match) => match.id === matchId)
-
-  if (!defaultMatch) {
-    throw new Error('Partida nao encontrada na tabela base.')
-  }
-
-  await setDoc(doc(matchesRef, matchId), {
-    ...defaultMatch,
-    homeGoals,
-    awayGoals,
-    played: true,
-    scorers,
-    updatedAt: serverTimestamp(),
-    updatedBy: userId,
-  }, { merge: true })
-}
-
-export function subscribeKnockoutMatches(onData: DataCallback<KnockoutMatch>, onError: ErrorCallback): Unsubscribe {
+export function subscribeSeasonKnockoutMatches(
+  seasonId: string,
+  onData: DataCallback<KnockoutMatch>,
+  onError: ErrorCallback,
+): Unsubscribe {
   return onSnapshot(
-    knockoutMatchesRef,
+    seasonKnockoutMatchesRef(seasonId),
     (snapshot) => {
       const matches = snapshot.docs
         .map((item) => item.data() as KnockoutMatch)
@@ -105,7 +101,66 @@ export function subscribeKnockoutMatches(onData: DataCallback<KnockoutMatch>, on
   )
 }
 
-export async function saveKnockoutMatchScore(
+// Cria uma temporada nova: grava o elenco informado e sorteia os confrontos
+// (cada rodada e sorteada de forma independente, entao a mesma dupla pode se
+// encontrar mais de uma vez). Tudo em um unico batch, pra a temporada nunca
+// ficar "pela metade" se algo falhar no meio do caminho.
+export async function createSeason(name: string, rounds: number, players: Player[], userId: string): Promise<string> {
+  const seasonDocRef = doc(seasonsRef)
+  const seasonId = seasonDocRef.id
+  const matches = drawSeasonMatches(
+    players.map((player) => player.id),
+    rounds,
+  )
+
+  const batch = writeBatch(db)
+
+  batch.set(seasonDocRef, {
+    id: seasonId,
+    name,
+    rounds,
+    status: 'active',
+    createdAt: serverTimestamp(),
+    createdBy: userId,
+  })
+
+  for (const player of players) {
+    batch.set(doc(seasonPlayersRef(seasonId), player.id), player)
+  }
+
+  for (const match of matches) {
+    batch.set(doc(seasonMatchesRef(seasonId), match.id), match)
+  }
+
+  await batch.commit()
+
+  return seasonId
+}
+
+export async function saveSeasonMatchScore(
+  seasonId: string,
+  matchId: string,
+  homeGoals: number,
+  awayGoals: number,
+  scorers: ScorerEntry[],
+  userId: string,
+) {
+  await setDoc(
+    doc(seasonMatchesRef(seasonId), matchId),
+    {
+      homeGoals,
+      awayGoals,
+      played: true,
+      scorers,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    },
+    { merge: true },
+  )
+}
+
+export async function saveSeasonKnockoutMatchScore(
+  seasonId: string,
   stageId: string,
   homeGoals: number,
   awayGoals: number,
@@ -113,7 +168,7 @@ export async function saveKnockoutMatchScore(
   userId: string,
 ) {
   await setDoc(
-    doc(knockoutMatchesRef, stageId),
+    doc(seasonKnockoutMatchesRef(seasonId), stageId),
     {
       id: stageId,
       homeGoals,
@@ -127,29 +182,76 @@ export async function saveKnockoutMatchScore(
   )
 }
 
-export async function savePlayerProfile(player: Player, userId: string) {
-  await setDoc(doc(playersRef, player.id), {
-    ...player,
-    updatedAt: serverTimestamp(),
-    updatedBy: userId,
-  }, { merge: true })
+export async function saveSeasonPlayerProfile(seasonId: string, player: Player, userId: string) {
+  await setDoc(
+    doc(seasonPlayersRef(seasonId), player.id),
+    {
+      ...player,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    },
+    { merge: true },
+  )
 }
 
-export async function uploadPlayerPhoto(playerId: string, file: File) {
+export async function uploadSeasonPlayerPhoto(seasonId: string, playerId: string, file: File) {
   const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-  const photoRef = ref(storage, `players/${playerId}/photo.${extension}`)
+  const photoRef = ref(storage, `seasons/${seasonId}/players/${playerId}/photo.${extension}`)
 
   await uploadBytes(photoRef, file, { contentType: file.type || 'image/jpeg' })
 
   return getDownloadURL(photoRef)
 }
 
-function getPlayerOrder(playerId: string) {
-  const index = defaultPlayers.findIndex((player) => player.id === playerId)
-  return index === -1 ? Number.MAX_SAFE_INTEGER : index
-}
+// Verifica se existem dados "legados" (de antes das temporadas existirem) e,
+// se ninguem tiver criado nenhuma temporada ainda, transforma esses dados na
+// "Temporada 1" automaticamente. E seguro chamar isso toda vez que o app
+// carrega: uma vez que exista qualquer temporada, essa funcao nao faz nada.
+export async function migrateLegacySeasonIfNeeded(userId: string): Promise<string | null> {
+  const existingSeasons = await getDocs(seasonsRef)
 
-function getMatchOrder(matchId: string) {
-  const index = defaultMatches.findIndex((match) => match.id === matchId)
-  return index === -1 ? Number.MAX_SAFE_INTEGER : index
+  if (!existingSeasons.empty) {
+    return null
+  }
+
+  const [legacyPlayersSnap, legacyMatchesSnap, legacyKnockoutSnap] = await Promise.all([
+    getDocs(legacyPlayersRef),
+    getDocs(legacyMatchesRef),
+    getDocs(legacyKnockoutMatchesRef),
+  ])
+
+  if (legacyPlayersSnap.empty && legacyMatchesSnap.empty) {
+    return null
+  }
+
+  const legacyPlayers = mergePlayersWithDefaults(legacyPlayersSnap.docs.map((item) => item.data() as Player))
+  const legacyMatches = mergeMatchesWithDefaults(legacyMatchesSnap.docs.map((item) => item.data() as Match))
+  const legacyKnockoutMatches = legacyKnockoutSnap.docs.map((item) => item.data() as KnockoutMatch)
+
+  const batch = writeBatch(db)
+
+  batch.set(doc(seasonsRef, LEGACY_SEASON_ID), {
+    id: LEGACY_SEASON_ID,
+    name: 'Temporada 1',
+    rounds: TOTAL_ROUNDS,
+    status: 'active',
+    createdAt: serverTimestamp(),
+    createdBy: userId,
+  })
+
+  for (const player of legacyPlayers) {
+    batch.set(doc(seasonPlayersRef(LEGACY_SEASON_ID), player.id), player)
+  }
+
+  for (const match of legacyMatches) {
+    batch.set(doc(seasonMatchesRef(LEGACY_SEASON_ID), match.id), match)
+  }
+
+  for (const match of legacyKnockoutMatches) {
+    batch.set(doc(seasonKnockoutMatchesRef(LEGACY_SEASON_ID), match.id), match)
+  }
+
+  await batch.commit()
+
+  return LEGACY_SEASON_ID
 }

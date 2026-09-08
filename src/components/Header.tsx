@@ -1,11 +1,13 @@
 import type { User } from 'firebase/auth'
-import { BarChart3, LogOut, Shield, Swords, Trophy, UsersRound } from 'lucide-react'
+import { BarChart3, CalendarRange, LogOut, Shield, Swords, Trophy, UsersRound } from 'lucide-react'
+import type { Season } from '../domain/tournament'
 import { ThemeToggle } from './ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Button } from './ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 
-export type AppView = 'dashboard' | 'knockout' | 'scorers' | 'admin'
+export type AppView = 'dashboard' | 'knockout' | 'scorers' | 'admin' | 'newSeason'
 
 type HeaderProps = {
   user: User
@@ -13,9 +15,21 @@ type HeaderProps = {
   activeView?: AppView
   onViewChange?: (view: AppView) => void
   onSignOut: () => void
+  seasons?: Season[]
+  selectedSeasonId?: string
+  onSeasonChange?: (seasonId: string) => void
 }
 
-export function Header({ user, isAdmin = false, activeView = 'dashboard', onViewChange, onSignOut }: HeaderProps) {
+export function Header({
+  user,
+  isAdmin = false,
+  activeView = 'dashboard',
+  onViewChange,
+  onSignOut,
+  seasons = [],
+  selectedSeasonId,
+  onSeasonChange,
+}: HeaderProps) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-5 sm:gap-4">
       <div className="flex items-center gap-2.5 sm:gap-3">
@@ -32,6 +46,22 @@ export function Header({ user, isAdmin = false, activeView = 'dashboard', onView
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5 sm:gap-4">
+        {seasons.length > 0 ? (
+          <Select value={selectedSeasonId} onValueChange={(value) => onSeasonChange?.(value)}>
+            <SelectTrigger aria-label="Selecionar temporada" className="w-36 sm:w-44">
+              <CalendarRange size={16} aria-hidden="true" className="text-muted-foreground" />
+              <SelectValue placeholder="Temporada" />
+            </SelectTrigger>
+            <SelectContent>
+              {seasons.map((season) => (
+                <SelectItem value={season.id} key={season.id}>
+                  {season.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+
         <Tabs value={activeView} onValueChange={(value) => onViewChange?.(value as AppView)}>
           <TabsList aria-label="Navegacao principal">
             <TabsTrigger value="dashboard">
@@ -50,6 +80,12 @@ export function Header({ user, isAdmin = false, activeView = 'dashboard', onView
               <TabsTrigger value="admin">
                 <UsersRound size={16} aria-hidden="true" />
                 <span className="hidden sm:inline">Admin</span>
+              </TabsTrigger>
+            ) : null}
+            {isAdmin ? (
+              <TabsTrigger value="newSeason">
+                <CalendarRange size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Nova temporada</span>
               </TabsTrigger>
             ) : null}
           </TabsList>
