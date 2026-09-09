@@ -1,5 +1,5 @@
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
-import { History, RefreshCw } from 'lucide-react'
+import { Dices, History, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AdminTeamsPanel } from './components/AdminTeamsPanel'
 import { Header } from './components/Header'
@@ -115,6 +115,22 @@ function Dashboard({ user, onSignOut }: DashboardProps) {
               : 'Nenhuma temporada criada ainda. Peca para o admin criar a primeira temporada.'}
           </AlertDescription>
         </Alert>
+      ) : null}
+
+      {isAdmin && !tournament.loading && tournament.matches.length > 0 && tournament.matches.every((match) => !match.played) ? (
+        <div className="mt-6 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-muted/40 p-4">
+          <div className="flex items-start gap-3">
+            <Dices size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-brand-purple dark:text-primary" />
+            <div className="text-sm">
+              <strong className="block font-semibold">Sorteio</strong>
+              <span>Ainda nao tem nenhum resultado lancado nessa temporada — se a folga ou os confrontos saíram torto, pode sortear de novo.</span>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" type="button" disabled={tournament.redrawing} onClick={tournament.redrawMatches}>
+            <Dices aria-hidden="true" />
+            {tournament.redrawing ? 'Sorteando' : 'Sortear de novo'}
+          </Button>
+        </div>
       ) : null}
 
       {activeView === 'newSeason' && isAdmin ? (

@@ -14,6 +14,7 @@ import {
   type Season,
 } from '../domain/tournament'
 import {
+  redrawSeasonMatches,
   saveSeasonKnockoutMatchScore,
   saveSeasonMatchScore,
   saveSeasonPlayerProfile,
@@ -36,6 +37,7 @@ export function useTournament(userId: string | undefined, season: Season | undef
   const [error, setError] = useState('')
   const [savingMatchId, setSavingMatchId] = useState<string | null>(null)
   const [savingKnockoutMatchId, setSavingKnockoutMatchId] = useState<string | null>(null)
+  const [redrawing, setRedrawing] = useState(false)
   const hasAutoSelectedRound = useRef<string | undefined>(undefined)
 
   useEffect(() => {
@@ -193,6 +195,36 @@ export function useTournament(userId: string | undefined, season: Season | undef
     return fetchTeamRoster(teamName, teamId)
   }
 
+  // So sorteia de novo quando ninguem ainda jogou nenhuma partida da
+  // temporada — depois disso, refazer o sorteio apagaria resultados de verdade.
+  async function handleRedrawMatches() {
+    if (!userId) {
+      setError('Entre com o Google antes de sortear.')
+      return
+    }
+
+    if (!seasonId) {
+      setError('Nenhuma temporada selecionada.')
+      return
+    }
+
+    if (matches.some((match) => match.played)) {
+      setError('Ja existem resultados lancados nessa temporada — nao e possivel sortear de novo.')
+      return
+    }
+
+    setRedrawing(true)
+    setError('')
+
+    try {
+      await redrawSeasonMatches(seasonId, totalRounds, players.map((player) => player.id), userId)
+    } catch (redrawError) {
+      setError(redrawError instanceof Error ? redrawError.message : 'Nao foi possivel sortear de novo.')
+    } finally {
+      setRedrawing(false)
+    }
+  }
+
   return {
     players,
     standings,
@@ -208,10 +240,12 @@ export function useTournament(userId: string | undefined, season: Season | undef
     savingMatchId,
     knockoutBracket,
     savingKnockoutMatchId,
+    redrawing,
     saveScore: handleSaveScore,
     saveKnockoutScore: handleSaveKnockoutScore,
     savePlayer: handleSavePlayer,
     uploadPlayerPhoto: handleUploadPhoto,
     syncTeamRoster: handleSyncTeamRoster,
+    redrawMatches: handleRedrawMatches,
   }
 }

@@ -137,6 +137,33 @@ export async function createSeason(name: string, rounds: number, players: Player
   return seasonId
 }
 
+// Sorteia os confrontos de uma temporada ja existente de novo, substituindo
+// as partidas atuais (apaga as antigas e grava as novas no mesmo batch). Deve
+// ser usado so quando ninguem ainda jogou nenhuma partida dessa temporada —
+// o chamador e responsavel por checar isso antes.
+export async function redrawSeasonMatches(seasonId: string, rounds: number, playerIds: string[], userId: string): Promise<void> {
+  const existingMatchesSnap = await getDocs(seasonMatchesRef(seasonId))
+  const matches = drawSeasonMatches(playerIds, rounds)
+
+  const batch = writeBatch(db)
+
+  for (const existingMatch of existingMatchesSnap.docs) {
+    batch.delete(existingMatch.ref)
+  }
+
+  for (const match of matches) {
+    batch.set(doc(seasonMatchesRef(seasonId), match.id), match)
+  }
+
+  batch.set(
+    doc(seasonsRef, seasonId),
+    { redrawnAt: serverTimestamp(), redrawnBy: userId },
+    { merge: true },
+  )
+
+  await batch.commit()
+}
+
 export async function saveSeasonMatchScore(
   seasonId: string,
   matchId: string,

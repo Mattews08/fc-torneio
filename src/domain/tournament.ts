@@ -223,25 +223,35 @@ function shuffle<T>(items: T[], randomFn: () => number): T[] {
   return result
 }
 
-// Sorteia os confrontos de uma temporada: cada rodada embaralha o elenco
-// inteiro e forma os pares na sequencia (sobra 1 pessoa de folga quando o
-// numero de jogadores e impar). Cada rodada e sorteada de forma independente
-// das outras, entao duas pessoas podem se enfrentar mais de uma vez (ou nenhuma)
-// ao longo da temporada — e proposital, nao e um turno/returno garantido.
+// Sorteia os confrontos de uma temporada: os adversarios de cada rodada sao
+// sorteados de forma independente das outras rodadas, entao duas pessoas
+// podem se enfrentar mais de uma vez (ou nenhuma) ao longo da temporada — e
+// proposital, nao e um turno/returno garantido. A folga (quando o numero de
+// jogadores e impar), porem, roda de forma justa: cada pessoa so folga de
+// novo depois que todo mundo ja folgou uma vez no ciclo atual, pra ninguem
+// ficar preso de fora (ou jogando pouco) por sorte ruim em varias rodadas seguidas.
 export function drawSeasonMatches(playerIds: string[], rounds: number, randomFn: () => number = Math.random): Match[] {
   if (playerIds.length < 2 || rounds < 1) {
     return []
   }
 
   const matches: Match[] = []
+  const needsBye = playerIds.length % 2 === 1
+  let byeQueue: string[] = []
 
   for (let round = 1; round <= rounds; round += 1) {
-    const shuffled = shuffle(playerIds, randomFn)
     let byePlayerId = ''
 
-    if (shuffled.length % 2 === 1) {
-      byePlayerId = shuffled.shift() ?? ''
+    if (needsBye) {
+      if (byeQueue.length === 0) {
+        byeQueue = shuffle(playerIds, randomFn)
+      }
+
+      byePlayerId = byeQueue.shift() ?? ''
     }
+
+    const roundPlayerIds = needsBye ? playerIds.filter((id) => id !== byePlayerId) : playerIds
+    const shuffled = shuffle(roundPlayerIds, randomFn)
 
     for (let index = 0; index < shuffled.length; index += 2) {
       const homePlayerId = shuffled[index]

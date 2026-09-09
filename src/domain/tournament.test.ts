@@ -242,8 +242,9 @@ describe('drawSeasonMatches', () => {
     // randomFn constante faz o embaralhamento dar sempre o mesmo resultado,
     // entao os mesmos confrontos se repetem em todas as rodadas — igual ao
     // exemplo de "3 confrontos com a mesma pessoa" que motivou esse sorteio.
+    // Elenco par (sem folga) pra isolar esse comportamento do rodizio de folga.
     const alwaysFirst = () => 0
-    const matches = drawSeasonMatches(['a', 'b', 'c', 'd', 'e'], 3, alwaysFirst)
+    const matches = drawSeasonMatches(['a', 'b', 'c', 'd'], 3, alwaysFirst)
 
     expect(matches).toHaveLength(6)
 
@@ -263,6 +264,32 @@ describe('drawSeasonMatches', () => {
     expect(oddRoster.every((match) => match.byePlayerId !== '')).toBe(true)
     // 5 jogadores, 1 de folga por rodada -> 2 partidas por rodada
     expect(oddRoster.filter((match) => match.round === 1)).toHaveLength(2)
+  })
+
+  it('rotates the bye fairly: nobody folga de novo antes de todo mundo ja ter folgado uma vez no ciclo', () => {
+    // Esse e o bug relatado: "sorteio totalmente aleatorio" fazia o sorteio da
+    // folga ser independente a cada rodada, o que podia (por sorte ruim) dar
+    // quase todas as folgas pra mesma pessoa. Agora a folga roda em ciclos do
+    // tamanho do elenco, garantindo que todo mundo folga o mesmo numero de vezes.
+    const players = ['a', 'b', 'c', 'd', 'e']
+    const matches = drawSeasonMatches(players, 10)
+
+    const byeByRound = new Map<number, string>()
+    for (const match of matches) {
+      byeByRound.set(match.round, match.byePlayerId)
+    }
+
+    // 10 rodadas / 5 jogadores = 2 ciclos completos -> cada um folga exatamente 2 vezes.
+    const byeCounts = new Map<string, number>()
+    for (const bye of byeByRound.values()) {
+      byeCounts.set(bye, (byeCounts.get(bye) ?? 0) + 1)
+    }
+    expect(byeCounts.size).toBe(players.length)
+    expect([...byeCounts.values()].every((count) => count === 2)).toBe(true)
+
+    // Dentro do primeiro ciclo (rodadas 1-5), ninguem repete a folga.
+    const firstCycleByes = [1, 2, 3, 4, 5].map((round) => byeByRound.get(round))
+    expect(new Set(firstCycleByes).size).toBe(players.length)
   })
 
   it('produces no matches with fewer than 2 players or fewer than 1 round', () => {
